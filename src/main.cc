@@ -15,7 +15,6 @@
 /*****************************************************************************/
 
 static void SystemClock_Config ();
-static void EXTI15_10_IRQHandler_Config ();
 static void Error_Handler ();
 
 /*****************************************************************************/
@@ -40,6 +39,10 @@ int main ()
            */
         HAL_Init ();
 
+
+        unsigned int jj = 76;
+        float a = jj;
+
         /* Configure the system clock to 400 MHz */
         SystemClock_Config ();
 
@@ -47,56 +50,55 @@ int main ()
         //        BSP_LED_Init (LED1);
 
         /* Infinite loop */
-        volatile int i = 0;
+        volatile double dd = 0;
         while (1) {
-                ++i;
+                ++dd;
         }
 }
 
 /*****************************************************************************/
 
-static void SystemClock_Config (void)
+void SystemClock_Config (void)
 {
-        RCC_ClkInitTypeDef RCC_ClkInitStruct;
-        RCC_OscInitTypeDef RCC_OscInitStruct;
-        HAL_StatusTypeDef ret = HAL_OK;
+        RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
+        RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
+        RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = { 0 };
 
-        /*!< Supply configuration update enable */
+        /**Supply configuration update enable
+         */
         MODIFY_REG (PWR->CR3, PWR_CR3_SCUEN, 0);
-
-        /* The voltage scaling allows optimizing the power consumption when the device is
-           clocked below the maximum system frequency, to update the voltage scaling value
-           regarding system frequency refer to product datasheet.  */
+        /**Configure the main internal regulator output voltage
+         */
         __HAL_PWR_VOLTAGESCALING_CONFIG (PWR_REGULATOR_VOLTAGE_SCALE1);
 
-        while (!__HAL_PWR_GET_FLAG (PWR_FLAG_VOSRDY)) {
+        while ((PWR->D3CR & (PWR_D3CR_VOSRDY)) != PWR_D3CR_VOSRDY) {
         }
 
-        /* Enable HSE Oscillator and activate PLL with HSE as source */
-        RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
-        RCC_OscInitStruct.HSEState = RCC_HSE_BYPASS;
-        RCC_OscInitStruct.HSIState = RCC_HSI_OFF;
-        RCC_OscInitStruct.CSIState = RCC_CSI_OFF;
+        /**Initializes the CPU, AHB and APB busses clocks
+         */
+        RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48 | RCC_OSCILLATORTYPE_CSI;
+        RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
+        RCC_OscInitStruct.CSIState = RCC_CSI_ON;
+        RCC_OscInitStruct.CSICalibrationValue = 16;
         RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-        RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
-
-        RCC_OscInitStruct.PLL.PLLM = 4;
-        RCC_OscInitStruct.PLL.PLLN = 400;
+        RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_CSI;
+        RCC_OscInitStruct.PLL.PLLM = 1;
+        RCC_OscInitStruct.PLL.PLLN = 200;
         RCC_OscInitStruct.PLL.PLLP = 2;
-        RCC_OscInitStruct.PLL.PLLR = 2;
         RCC_OscInitStruct.PLL.PLLQ = 4;
-
-        RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
+        RCC_OscInitStruct.PLL.PLLR = 2;
         RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_2;
-        ret = HAL_RCC_OscConfig (&RCC_OscInitStruct);
-        if (ret != HAL_OK) {
+        RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
+        RCC_OscInitStruct.PLL.PLLFRACN = 0;
+
+        if (HAL_RCC_OscConfig (&RCC_OscInitStruct) != HAL_OK) {
                 Error_Handler ();
         }
 
-        /* Select PLL as system clock source and configure  bus clocks dividers */
-        RCC_ClkInitStruct.ClockType = (RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_D1PCLK1 | RCC_CLOCKTYPE_PCLK1
-                                       | RCC_CLOCKTYPE_PCLK2 | RCC_CLOCKTYPE_D3PCLK1);
-
+        /**Initializes the CPU, AHB and APB busses clocks
+         */
+        RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2
+                | RCC_CLOCKTYPE_D3PCLK1 | RCC_CLOCKTYPE_D1PCLK1;
         RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
         RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
         RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
@@ -104,8 +106,16 @@ static void SystemClock_Config (void)
         RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
         RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
         RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
-        ret = HAL_RCC_ClockConfig (&RCC_ClkInitStruct, FLASH_LATENCY_4);
-        if (ret != HAL_OK) {
+
+        if (HAL_RCC_ClockConfig (&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) {
+                Error_Handler ();
+        }
+
+        PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USART3 | RCC_PERIPHCLK_USB;
+        PeriphClkInitStruct.Usart234578ClockSelection = RCC_USART234578CLKSOURCE_D2PCLK1;
+        PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
+
+        if (HAL_RCCEx_PeriphCLKConfig (&PeriphClkInitStruct) != HAL_OK) {
                 Error_Handler ();
         }
 
