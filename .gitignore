@@ -1,0 +1,6 @@
+.#CMakeLists.txt
+build
+CMakeLists.txt.user
+data.txt
+build*
+.mxproject
