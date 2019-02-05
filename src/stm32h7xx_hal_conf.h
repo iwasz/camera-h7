@@ -56,10 +56,10 @@
 /* #define HAL_CRC_MODULE_ENABLED */
 /* #define HAL_CRYP_MODULE_ENABLED */
 /* #define HAL_DAC_MODULE_ENABLED */
-/* #define HAL_DCMI_MODULE_ENABLED */
+#define HAL_DCMI_MODULE_ENABLED
 /* #define HAL_DFSDM_MODULE_ENABLED */
 #define HAL_DMA_MODULE_ENABLED
-/* #define HAL_DMA2D_MODULE_ENABLED */
+#define HAL_DMA2D_MODULE_ENABLED
 /* #define HAL_ETH_MODULE_ENABLED */
 /* #define HAL_FDCAN_MODULE_ENABLED */
 #define HAL_FLASH_MODULE_ENABLED
@@ -72,7 +72,7 @@
 /* #define HAL_I2S_MODULE_ENABLED */
 /* #define HAL_IRDA_MODULE_ENABLED */
 /* #define HAL_IWDG_MODULE_ENABLED */
-/* #define HAL_JPEG_MODULE_ENABLED */
+#define HAL_JPEG_MODULE_ENABLED
 /* #define HAL_LPTIM_MODULE_ENABLED */
 /* #define HAL_LTDC_MODULE_ENABLED */
 /* #define HAL_MDIOS_MODULE_ENABLED */
@@ -98,7 +98,7 @@
 /* #define HAL_SWPMI_MODULE_ENABLED */
 /* #define HAL_TIM_MODULE_ENABLED */
 #define HAL_UART_MODULE_ENABLED
-/* #define HAL_USART_MODULE_ENABLED */
+#define HAL_USART_MODULE_ENABLED
 /* #define HAL_WWDG_MODULE_ENABLED */
 
 /* ########################## Oscillator Values adaptation ####################*/
