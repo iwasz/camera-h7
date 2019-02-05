@@ -4,3 +4,4 @@ CMakeLists.txt.user
 data.txt
 build*
 .mxproject
+doc/ffd
