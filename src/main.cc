@@ -6,6 +6,7 @@
  *  ~~~~~~~~~                                                               *
  ****************************************************************************/
 
+#include "Ov3640.h"
 #include "stm32h7xx_hal.h"
 #include <cerrno>
 #include <cmath>
@@ -15,7 +16,7 @@
 /*****************************************************************************/
 
 static void SystemClock_Config ();
-static void Error_Handler ();
+extern "C" void Error_Handler ();
 
 /*****************************************************************************/
 /* Camera                                                                    */
@@ -177,10 +178,11 @@ void myCamera (uint8_t *buf, size_t size, uint32_t current_resolution)
 
         /*---------------------------------------------------------------------------*/
 
-        if (ov2640_ReadID (CAMERA_I2C_ADDRESS) == OV2640_ID) {
-                /* Camera Init */
-                ov2640_Init (CAMERA_I2C_ADDRESS, current_resolution);
-        }
+        //        if (ov2640_ReadID (CAMERA_I2C_ADDRESS) == OV2640_ID) {
+        //                /* Camera Init */
+        //                ov2640_Init (CAMERA_I2C_ADDRESS, current_resolution);
+        //        }
+        Ov3640 camera;
 
         // Continuous frames.
         // HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)buff, GetSize (current_resolution));
@@ -236,47 +238,24 @@ void CAMERA_IO_Init ()
         }
 }
 
-/**
- * @brief  Camera writes single data.
- * @param  Addr: I2C address
- * @param  Reg: Reg address.
- * @param  Value: Data to be written
- */
-void CAMERA_IO_Write (uint8_t Addr, uint8_t Reg, uint8_t Value)
-{
-
-        HAL_StatusTypeDef status = HAL_OK;
-
-        status = HAL_I2C_Mem_Write (&hi2c1, Addr, (uint16_t)Reg, I2C_MEMADD_SIZE_8BIT, &Value, 1, 1000);
-
-        /* Check the communication status */
-        if (status != HAL_OK) {
-                /* Execute user timeout callback */
-                Error_Handler ();
-        }
-}
-
-/**
- * @brief  Camera reads single data.
- * @param  Addr: I2C address
- * @param  Reg: Reg address.
- * @retval Read data
- */
-uint8_t CAMERA_IO_Read (uint8_t Addr, uint8_t Reg)
-{
-        HAL_StatusTypeDef status = HAL_OK;
-        uint8_t value = 0;
-
-        status = HAL_I2C_Mem_Read (&hi2c1, Addr, Reg, I2C_MEMADD_SIZE_8BIT, &value, 1, 1000);
-
-        /* Check the communication status */
-        if (status != HAL_OK) {
-                /* Execute user timeout callback */
-                Error_Handler ();
-        }
-
-        return value;
-}
+// byte ArduCAM::wrSensorReg16_8(int regID, int regDat)
+//{
+//    #if defined (RASPBERRY_PI)
+//        arducam_i2c_word_write(regID, regDat);
+//        arducam_delay_ms(1);
+//    #else
+//        Wire.beginTransmission(sensor_addr >> 1);
+//      Wire.write(regID >> 8);            // sends instruction byte, MSB first
+//      Wire.write(regID & 0x00FF);
+//      Wire.write(regDat & 0x00FF);
+//      if (Wire.endTransmission())
+//      {
+//        return 0;
+//      }
+//      delay(1);
+//    #endif
+//    return 1;
+//}
 
 /**
  * @brief  Camera delay..
@@ -423,7 +402,7 @@ void __verbose_terminate_handler ()
 }
 } // namespace __gnu_cxx
 
-void Error_Handler ()
+extern "C" void Error_Handler ()
 {
         while (true) {
         }

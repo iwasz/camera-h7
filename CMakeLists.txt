@@ -6,7 +6,7 @@ ENABLE_LANGUAGE (ASM-ATT)
 
 INCLUDE_DIRECTORIES("src/")
 #INCLUDE_DIRECTORIES("../../libmicro/src/")
-INCLUDE_DIRECTORIES("../../etl/include/")
+INCLUDE_DIRECTORIES("../etl/include/")
 
 # Resonator used in this project
 #ADD_DEFINITIONS (-DHSE_VALUE=8000000)
@@ -29,8 +29,11 @@ ADD_EXECUTABLE(${CMAKE_PROJECT_NAME}.elf
     "src/stm324x9i_eval_camera.cc"
     "src/stm324x9i_eval_camera.h"
     "src/camera.h"
-    "src/ov2640.cc"
-    "src/ov2640.h"
+#    "src/ov2640.cc"
+#    "src/ov2640.h"
+#    "src/ov3640_regs.h"
+    "src/Ov3640.h"
+    "src/Ov3640.cc"
 #    "src/stm324x9i_eval_io.h"
     "src/stm324x9i_eval.h"
 )
