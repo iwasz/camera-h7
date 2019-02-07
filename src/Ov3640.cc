@@ -8,7 +8,8 @@
 
 #include "Ov3640.h"
 #include <cstdint>
-#include <etl/array_view.h>
+//#include <etl/array_view.h>
+#include <iterator>
 
 #define OV3640_CHIPID_HIGH 0x300a
 #define OV3640_CHIPID_LOW 0x300b
@@ -26,7 +27,7 @@ const Ov3640::SensorReg OV3640_VGA[] = {
         { 0x3404, 0x00 }, { 0x3020, 0x01 }, { 0x3021, 0x1d }, { 0x3022, 0x00 }, { 0x3023, 0x0a }, { 0x3024, 0x08 }, { 0x3025, 0x18 },
         { 0x3026, 0x06 }, { 0x3027, 0x0c }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x68 }, { 0x3363, 0x08 },
         { 0x3364, 0x04 }, { 0x3403, 0x42 }, { 0x3088, 0x08 }, { 0x3089, 0x00 }, { 0x308a, 0x06 }, { 0x308b, 0x00 }, { 0x3507, 0x06 },
-        { 0x350a, 0x4f }, { 0x3600, 0xc4 }, { 0x3011, 0x01 }, { 0xffff, 0xff },
+        { 0x350a, 0x4f }, { 0x3600, 0xc4 }, { 0x3011, 0x01 }, /*{ 0xffff, 0xff },*/
 
 };
 
@@ -46,7 +47,7 @@ const Ov3640::SensorReg OV3640_QVGA[] = {
         { 0x3088, 0x2 },  { 0x3089, 0x80 }, { 0x308a, 0x1 },  { 0x308b, 0xe0 }, { 0x308d, 0x4 },  { 0x3086, 0x3 },  { 0x3086, 0x0 },
         { 0x3011, 0x0 },  { 0x304c, 0x85 }, { 0x3600, 0xd0 }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0xc },  { 0x3362, 0x1 },
         { 0x3363, 0x48 }, { 0x3364, 0xf4 }, { 0x3403, 0x42 }, { 0x3088, 0x1 },  { 0x3089, 0x40 }, { 0x308a, 0x0 },  { 0x308b, 0xf0 },
-        { 0x307c, 0x12 }, { 0x3090, 0xc8 }, { 0x3600, 0xc4 }, { 0xffff, 0xff },
+        { 0x307c, 0x12 }, { 0x3090, 0xc8 }, { 0x3600, 0xc4 }, /*{ 0xffff, 0xff },*/
 };
 
 const Ov3640::SensorReg OV3640_176x144_JPEG[] = {
@@ -114,10 +115,10 @@ const Ov3640::SensorReg OV3640_2048x1536_JPEG[] = {
 Ov3640::Ov3640 (SensorResolution resolution)
 {
         if (resolution == SensorResolution::QVGA) {
-                wrSensorRegs16_8 (OV3640_QVGA);
+                wrSensorRegs16_8 (OV3640_QVGA, std::size (OV3640_QVGA));
         }
         else if (resolution == SensorResolution::VGA) {
-                wrSensorRegs16_8 (OV3640_VGA);
+                wrSensorRegs16_8 (OV3640_VGA, std::size (OV3640_VGA));
         }
 }
 
@@ -125,34 +126,34 @@ void Ov3640::setJpegSize (JpegResolution size)
 {
         switch (size) {
         case OV3640_176x144:
-                wrSensorRegs16_8 (OV3640_176x144_JPEG);
+                wrSensorRegs16_8 (OV3640_176x144_JPEG, std::size (OV3640_176x144_JPEG));
                 break;
         case OV3640_320x240:
-                wrSensorRegs16_8 (OV3640_320x240_JPEG);
+                wrSensorRegs16_8 (OV3640_320x240_JPEG, std::size (OV3640_320x240_JPEG));
                 break;
         case OV3640_352x288:
-                wrSensorRegs16_8 (OV3640_352x288_JPEG);
+                wrSensorRegs16_8 (OV3640_352x288_JPEG, std::size (OV3640_352x288_JPEG));
                 break;
         case OV3640_640x480:
-                wrSensorRegs16_8 (OV3640_640x480_JPEG);
+                wrSensorRegs16_8 (OV3640_640x480_JPEG, std::size (OV3640_640x480_JPEG));
                 break;
         case OV3640_800x600:
-                wrSensorRegs16_8 (OV3640_800x600_JPEG);
+                wrSensorRegs16_8 (OV3640_800x600_JPEG, std::size (OV3640_800x600_JPEG));
                 break;
         case OV3640_1024x768:
-                wrSensorRegs16_8 (OV3640_1024x768_JPEG);
+                wrSensorRegs16_8 (OV3640_1024x768_JPEG, std::size (OV3640_1024x768_JPEG));
                 break;
         case OV3640_1280x960:
-                wrSensorRegs16_8 (OV3640_1280x960_JPEG);
+                wrSensorRegs16_8 (OV3640_1280x960_JPEG, std::size (OV3640_1280x960_JPEG));
                 break;
         case OV3640_1600x1200:
-                wrSensorRegs16_8 (OV3640_1600x1200_JPEG);
+                wrSensorRegs16_8 (OV3640_1600x1200_JPEG, std::size (OV3640_1600x1200_JPEG));
                 break;
         case OV3640_2048x1536:
-                wrSensorRegs16_8 (OV3640_2048x1536_JPEG);
+                wrSensorRegs16_8 (OV3640_2048x1536_JPEG, std::size (OV3640_2048x1536_JPEG));
                 break;
         default:
-                wrSensorRegs16_8 (OV3640_320x240_JPEG);
+                wrSensorRegs16_8 (OV3640_320x240_JPEG, std::size (OV3640_320x240_JPEG));
                 break;
         }
 }
@@ -554,7 +555,7 @@ extern I2C_HandleTypeDef hi2c1;
 extern "C" void Error_Handler ();
 
 // Write 8 bit values to 16 bit register address
-void Ov3640::wrSensorRegs16_8 (const SensorReg reglist[])
+void Ov3640::wrSensorRegs16_8 (SensorReg const reglist[], size_t len)
 {
         //        int err = 0;
         //        unsigned int reg_addr;
@@ -577,7 +578,7 @@ void Ov3640::wrSensorRegs16_8 (const SensorReg reglist[])
 
         //        return 1;
 
-        for (int i = 0; i < sizeof (reglist) / sizeof (SensorReg); ++i) {
+        for (size_t i = 0; i < len; ++i) {
                 wrSensorReg16_8 (reglist[i].address, reglist[i].value);
         }
 }
@@ -602,7 +603,7 @@ void Ov3640::wrSensorReg16_8 (uint16_t regId, uint8_t value)
 
         HAL_StatusTypeDef status = HAL_OK;
 
-        status = HAL_I2C_Mem_Write (&hi2c1, SENSOR_I2C_ADDRESS, regId, I2C_MEMADD_SIZE_8BIT, &value, 1, 1000);
+        status = HAL_I2C_Mem_Write (&hi2c1, SENSOR_I2C_ADDRESS, regId, I2C_MEMADD_SIZE_16BIT, &value, 1, 1000);
 
         /* Check the communication status */
         if (status != HAL_OK) {
@@ -631,7 +632,7 @@ uint8_t Ov3640::rdSensorReg16_8 (uint16_t regId)
         HAL_StatusTypeDef status = HAL_OK;
         uint8_t value = 0;
 
-        status = HAL_I2C_Mem_Read (&hi2c1, SENSOR_I2C_ADDRESS, regId, I2C_MEMADD_SIZE_8BIT, &value, 1, 1000);
+        status = HAL_I2C_Mem_Read (&hi2c1, SENSOR_I2C_ADDRESS, regId, I2C_MEMADD_SIZE_16BIT, &value, 1, 1000);
 
         /* Check the communication status */
         if (status != HAL_OK) {

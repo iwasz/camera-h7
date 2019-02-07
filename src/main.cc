@@ -24,8 +24,7 @@ extern "C" void Error_Handler ();
 
 #include "stm324x9i_eval_camera.h"
 
-#define CAMERA_I2C_ADDRESS 0x60
-I2C_HandleTypeDef hi2c1;
+I2C_HandleTypeDef hi2c1 = { 0 };
 
 extern "C" void DMA2_Stream1_IRQHandler () { BSP_CAMERA_DMA_IRQHandler (); }
 
@@ -176,13 +175,48 @@ void myCamera (uint8_t *buf, size_t size, uint32_t current_resolution)
 
         HAL_DCMI_Init (&hdcmi);
 
+        CAMERA_IO_Init ();
+
         /*---------------------------------------------------------------------------*/
 
         //        if (ov2640_ReadID (CAMERA_I2C_ADDRESS) == OV2640_ID) {
         //                /* Camera Init */
         //                ov2640_Init (CAMERA_I2C_ADDRESS, current_resolution);
         //        }
-        Ov3640 camera;
+
+        static Ov3640 camera (Ov3640::VGA);
+
+        //        for (int i = 0; i < 256; ++i) {
+        //                HAL_StatusTypeDef status = HAL_OK;
+
+        //                uint8_t value;
+        //                status = HAL_I2C_Master_Receive (&hi2c1, i, &value, 1, 1000);
+
+        //                /* Check the communication status */
+        //                if (status == HAL_OK) {
+        //                        /* Execute user timeout callback */
+        //                        Error_Handler ();
+        //                }
+
+        //                HAL_Delay (1);
+        //        }
+
+        //        HAL_Delay (10);
+
+        //        for (int i = 0; i < 256; ++i) {
+        //                HAL_StatusTypeDef status = HAL_OK;
+
+        //                uint8_t value = i;
+        //                status = HAL_I2C_Master_Transmit (&hi2c1, i, &value, 1, 1000);
+
+        //                /* Check the communication status */
+        //                if (status == HAL_OK) {
+        //                        /* Execute user timeout callback */
+        //                        Error_Handler ();
+        //                }
+
+        //                HAL_Delay (1);
+        //        }
 
         // Continuous frames.
         // HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)buff, GetSize (current_resolution));
@@ -207,7 +241,7 @@ void CAMERA_IO_Init ()
         */
         GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_9;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_OD;
-        GPIO_InitStruct.Pull = GPIO_NOPULL;
+        GPIO_InitStruct.Pull = GPIO_PULLUP;
         GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
         GPIO_InitStruct.Alternate = GPIO_AF4_I2C1;
         HAL_GPIO_Init (GPIOB, &GPIO_InitStruct);
