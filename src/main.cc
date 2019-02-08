@@ -163,8 +163,8 @@ void myCamera (uint8_t *buf, size_t size)
         HAL_NVIC_EnableIRQ (DCMI_IRQn);
 
         /* NVIC configuration for DMA2D transfer complete interrupt */
-        HAL_NVIC_SetPriority (DMA2_Stream1_IRQn, 0x0F, 0);
-        HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
+        HAL_NVIC_SetPriority (DMA1_Stream0_IRQn, 0x0F, 0);
+        HAL_NVIC_EnableIRQ (DMA1_Stream0_IRQn);
 
         /* Configure the DMA stream */
         status = HAL_DMA_Init (hdcmi.DMA_Handle);
@@ -191,7 +191,8 @@ void myCamera (uint8_t *buf, size_t size)
         // HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)buff, GetSize (current_resolution));
 
         // Single frame
-        status = HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_SNAPSHOT, reinterpret_cast<uint32_t> (buf), size);
+        status = HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_CONTINUOUS, reinterpret_cast<uint32_t> (buf), size / 4);
+        // status = HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_SNAPSHOT, reinterpret_cast<uint32_t> (buf), size);
 
         if (status != HAL_OK) {
                 Error_Handler ();
