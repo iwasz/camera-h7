@@ -12,6 +12,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <new>
 
 /*****************************************************************************/
 
@@ -71,7 +72,7 @@ void myCamera (uint8_t *buf, size_t size)
         hdcmi.Init.HSPolarity = DCMI_HSPOLARITY_HIGH;
         hdcmi.Init.CaptureRate = DCMI_CR_ALL_FRAME;
         hdcmi.Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
-        hdcmi.Init.JPEGMode = DCMI_JPEG_ENABLE;
+        hdcmi.Init.JPEGMode = DCMI_JPEG_DISABLE;
         hdcmi.Init.ByteSelectMode = DCMI_BSM_ALL;
         hdcmi.Init.ByteSelectStart = DCMI_OEBS_ODD;
         hdcmi.Init.LineSelectMode = DCMI_LSM_ALL;
@@ -154,6 +155,7 @@ void myCamera (uint8_t *buf, size_t size)
         hdma_dcmi.Init.Mode = DMA_CIRCULAR;
         hdma_dcmi.Init.Priority = DMA_PRIORITY_MEDIUM;
         hdma_dcmi.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+        //        hdma_dcmi.Init.FIFOThreshold =
 
         __HAL_LINKDMA (&hdcmi, DMA_Handle, hdma_dcmi);
 
@@ -191,8 +193,8 @@ void myCamera (uint8_t *buf, size_t size)
         // HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)buff, GetSize (current_resolution));
 
         // Single frame
-        status = HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_CONTINUOUS, reinterpret_cast<uint32_t> (buf), size / 4);
-        // status = HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_SNAPSHOT, reinterpret_cast<uint32_t> (buf), size);
+        //        status = HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_CONTINUOUS, reinterpret_cast<uint32_t> (buf), size / 4);
+        status = HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_SNAPSHOT, reinterpret_cast<uint32_t> (buf), size / 4);
 
         if (status != HAL_OK) {
                 Error_Handler ();
@@ -287,9 +289,13 @@ int main ()
 
         initialise_monitor_handles ();
         printf ("Semihosting on camera-h7 project. Hello.");
-        uint8_t buffer[3 * 38400];
-        memset (buffer, 0, sizeof (buffer));
-        myCamera (buffer, sizeof (buffer));
+        static constexpr size_t BUF_SIZE = 4 * 20000;
+        // uint8_t buffer[BUF_SIZE];
+
+        uint8_t *buffer = new (reinterpret_cast<void *> (0x24000000)) uint8_t[BUF_SIZE];
+
+        memset (buffer, 0, BUF_SIZE);
+        myCamera (buffer, BUF_SIZE);
         HAL_Delay (500);
 
         FILE *f = fopen ("data.dat", "w");
@@ -298,7 +304,7 @@ int main ()
                 Error_Handler ();
         }
 
-        fwrite (buffer, sizeof (buffer), 1, f);
+        fwrite (buffer, BUF_SIZE, 1, f);
 
         fclose (f);
 
