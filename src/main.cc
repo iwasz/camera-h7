@@ -17,7 +17,7 @@
 
 static void SystemClock_Config ();
 extern "C" void Error_Handler ();
-
+extern "C" void initialise_monitor_handles ();
 /*****************************************************************************/
 /* Camera                                                                    */
 /*****************************************************************************/
@@ -26,6 +26,7 @@ extern "C" void Error_Handler ();
 
 I2C_HandleTypeDef hi2c1 = { 0 };
 DCMI_HandleTypeDef hdcmi = { 0 };
+DMA_HandleTypeDef hdma_dcmi = { 0 };
 
 void BSP_CAMERA_IRQHandler ();
 void BSP_CAMERA_DMA_IRQHandler ();
@@ -65,7 +66,7 @@ void myCamera (uint8_t *buf, size_t size)
 
         hdcmi.Instance = DCMI;
         hdcmi.Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
-        hdcmi.Init.PCKPolarity = DCMI_PCKPOLARITY_FALLING;
+        hdcmi.Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
         hdcmi.Init.VSPolarity = DCMI_VSPOLARITY_HIGH;
         hdcmi.Init.HSPolarity = DCMI_HSPOLARITY_HIGH;
         hdcmi.Init.CaptureRate = DCMI_CR_ALL_FRAME;
@@ -143,7 +144,6 @@ void myCamera (uint8_t *buf, size_t size)
 
         /* DCMI DMA Init */
         /* DCMI Init */
-        DMA_HandleTypeDef hdma_dcmi = { 0 };
         hdma_dcmi.Instance = DMA1_Stream0;
         hdma_dcmi.Init.Direction = DMA_PERIPH_TO_MEMORY;
         hdma_dcmi.Init.PeriphInc = DMA_PINC_DISABLE;
@@ -284,8 +284,21 @@ int main ()
         /* -1- Initialize LEDs mounted on STM32H743ZI-NUCLEO board */
         //        BSP_LED_Init (LED1);
 
-        uint8_t buffer[0x9600];
+        initialise_monitor_handles ();
+        printf ("Semihosting on camera-h7 project. Hello.");
+        uint8_t buffer[3 * 38400];
         myCamera (buffer, sizeof (buffer));
+        HAL_Delay (500);
+
+        FILE *f = fopen ("data.jpg", "w");
+
+        if (!f) {
+                Error_Handler ();
+        }
+
+        fwrite (buffer, sizeof (buffer), 1, f);
+
+        fclose (f);
 
         /* Infinite loop */
         volatile double dd = 0;
