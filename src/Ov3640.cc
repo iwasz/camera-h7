@@ -124,11 +124,11 @@ Ov3640::Ov3640 (SensorResolution resolution)
 
         setJpegSize (OV3640_320x240);
 
-        HAL_Delay (500);
-
         // RAW nie JPEG - sprawdzić
-        // wrSensorReg16_8 (0x3818, 0x81);
-        // wrSensorReg16_8 (0x3621, 0xA7);
+        //         wrSensorReg16_8 (0x3818, 0x81);
+        //         wrSensorReg16_8 (0x3621, 0xA7);
+
+        HAL_Delay (500);
 }
 
 void Ov3640::setJpegSize (JpegResolution size)

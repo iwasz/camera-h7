@@ -287,10 +287,11 @@ int main ()
         initialise_monitor_handles ();
         printf ("Semihosting on camera-h7 project. Hello.");
         uint8_t buffer[3 * 38400];
+        memset (buffer, 0, sizeof (buffer));
         myCamera (buffer, sizeof (buffer));
         HAL_Delay (500);
 
-        FILE *f = fopen ("data.jpg", "w");
+        FILE *f = fopen ("data.dat", "w");
 
         if (!f) {
                 Error_Handler ();
