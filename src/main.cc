@@ -22,61 +22,63 @@ extern "C" void Error_Handler ();
 /* Camera                                                                    */
 /*****************************************************************************/
 
-#include "stm324x9i_eval_camera.h"
+//#include "stm324x9i_eval_camera.h"
 
 I2C_HandleTypeDef hi2c1 = { 0 };
+DCMI_HandleTypeDef hdcmi = { 0 };
 
-extern "C" void DMA2_Stream1_IRQHandler () { BSP_CAMERA_DMA_IRQHandler (); }
+void BSP_CAMERA_IRQHandler ();
+void BSP_CAMERA_DMA_IRQHandler ();
+void CAMERA_IO_Init ();
+
+static int dma1HandlerCnt = 0;
+extern "C" void DMA1_Stream0_IRQHandler ()
+{
+        BSP_CAMERA_DMA_IRQHandler ();
+        ++dma1HandlerCnt;
+}
 
 /**
  * @brief  DCMI interrupt handler.
  * @param  None
  * @retval None
  */
-extern "C" void DCMI_IRQHandler () { BSP_CAMERA_IRQHandler (); }
-
-constexpr uint32_t getResolutionSize (uint32_t resolution)
+static int dcmiHandlerCnt = 0;
+extern "C" void DCMI_IRQHandler ()
 {
-        uint32_t size = 0;
-
-        /* Get capture size */
-        switch (resolution) {
-        case CAMERA_R160x120: {
-                size = 0x2580;
-        } break;
-        case CAMERA_R320x240: {
-                size = 0x9600;
-        } break;
-        default: {
-                break;
-        }
-        }
-
-        return size;
+        BSP_CAMERA_IRQHandler ();
+        ++dcmiHandlerCnt;
 }
+
+void BSP_CAMERA_IRQHandler (void) { HAL_DCMI_IRQHandler (&hdcmi); }
+
+/**
+ * @brief  Handles DMA interrupt request.
+ */
+void BSP_CAMERA_DMA_IRQHandler (void) { HAL_DMA_IRQHandler (hdcmi.DMA_Handle); }
 
 /*****************************************************************************/
 
-void myCamera (uint8_t *buf, size_t size, uint32_t current_resolution)
+void myCamera (uint8_t *buf, size_t size)
 {
-        DCMI_HandleTypeDef hdcmi;
+        HAL_StatusTypeDef status;
 
         hdcmi.Instance = DCMI;
         hdcmi.Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
         hdcmi.Init.PCKPolarity = DCMI_PCKPOLARITY_FALLING;
-        hdcmi.Init.VSPolarity = DCMI_VSPOLARITY_LOW;
-        hdcmi.Init.HSPolarity = DCMI_HSPOLARITY_LOW;
+        hdcmi.Init.VSPolarity = DCMI_VSPOLARITY_HIGH;
+        hdcmi.Init.HSPolarity = DCMI_HSPOLARITY_HIGH;
         hdcmi.Init.CaptureRate = DCMI_CR_ALL_FRAME;
         hdcmi.Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
-        hdcmi.Init.JPEGMode = DCMI_JPEG_DISABLE;
+        hdcmi.Init.JPEGMode = DCMI_JPEG_ENABLE;
         hdcmi.Init.ByteSelectMode = DCMI_BSM_ALL;
         hdcmi.Init.ByteSelectStart = DCMI_OEBS_ODD;
         hdcmi.Init.LineSelectMode = DCMI_LSM_ALL;
         hdcmi.Init.LineSelectStart = DCMI_OELS_ODD;
 
-        if (HAL_DCMI_Init (&hdcmi) != HAL_OK) {
-                Error_Handler ();
-        }
+        //        if (HAL_DCMI_Init (&hdcmi) != HAL_OK) {
+        //                Error_Handler ();
+        //        }
 
         /*---------------------------------------------------------------------------*/
 
@@ -107,35 +109,35 @@ void myCamera (uint8_t *buf, size_t size, uint32_t current_resolution)
         GPIO_InitStruct.Pin = GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
         GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
         HAL_GPIO_Init (GPIOE, &GPIO_InitStruct);
 
         GPIO_InitStruct.Pin = GPIO_PIN_4 | GPIO_PIN_6;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
         GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
         HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
 
         GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
         GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
         HAL_GPIO_Init (GPIOC, &GPIO_InitStruct);
 
         GPIO_InitStruct.Pin = GPIO_PIN_3;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
         GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
         HAL_GPIO_Init (GPIOD, &GPIO_InitStruct);
 
         GPIO_InitStruct.Pin = GPIO_PIN_9;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
         GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
         HAL_GPIO_Init (GPIOG, &GPIO_InitStruct);
 
@@ -149,13 +151,9 @@ void myCamera (uint8_t *buf, size_t size, uint32_t current_resolution)
         hdma_dcmi.Init.MemInc = DMA_MINC_ENABLE;
         hdma_dcmi.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
         hdma_dcmi.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
-        hdma_dcmi.Init.Mode = DMA_NORMAL;
+        hdma_dcmi.Init.Mode = DMA_CIRCULAR;
         hdma_dcmi.Init.Priority = DMA_PRIORITY_MEDIUM;
         hdma_dcmi.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-
-        if (HAL_DMA_Init (&hdma_dcmi) != HAL_OK) {
-                Error_Handler ();
-        }
 
         __HAL_LINKDMA (&hdcmi, DMA_Handle, hdma_dcmi);
 
@@ -169,60 +167,35 @@ void myCamera (uint8_t *buf, size_t size, uint32_t current_resolution)
         HAL_NVIC_EnableIRQ (DMA2_Stream1_IRQn);
 
         /* Configure the DMA stream */
-        HAL_DMA_Init (hdcmi.DMA_Handle);
+        status = HAL_DMA_Init (hdcmi.DMA_Handle);
+
+        if (status != HAL_OK) {
+                Error_Handler ();
+        }
 
         /*---------------------------------------------------------------------------*/
 
-        HAL_DCMI_Init (&hdcmi);
+        status = HAL_DCMI_Init (&hdcmi);
+
+        if (status != HAL_OK) {
+                Error_Handler ();
+        }
 
         CAMERA_IO_Init ();
 
         /*---------------------------------------------------------------------------*/
 
-        //        if (ov2640_ReadID (CAMERA_I2C_ADDRESS) == OV2640_ID) {
-        //                /* Camera Init */
-        //                ov2640_Init (CAMERA_I2C_ADDRESS, current_resolution);
-        //        }
-
-        static Ov3640 camera (Ov3640::VGA);
-
-        //        for (int i = 0; i < 256; ++i) {
-        //                HAL_StatusTypeDef status = HAL_OK;
-
-        //                uint8_t value;
-        //                status = HAL_I2C_Master_Receive (&hi2c1, i, &value, 1, 1000);
-
-        //                /* Check the communication status */
-        //                if (status == HAL_OK) {
-        //                        /* Execute user timeout callback */
-        //                        Error_Handler ();
-        //                }
-
-        //                HAL_Delay (1);
-        //        }
-
-        //        HAL_Delay (10);
-
-        //        for (int i = 0; i < 256; ++i) {
-        //                HAL_StatusTypeDef status = HAL_OK;
-
-        //                uint8_t value = i;
-        //                status = HAL_I2C_Master_Transmit (&hi2c1, i, &value, 1, 1000);
-
-        //                /* Check the communication status */
-        //                if (status == HAL_OK) {
-        //                        /* Execute user timeout callback */
-        //                        Error_Handler ();
-        //                }
-
-        //                HAL_Delay (1);
-        //        }
+        static Ov3640 camera (Ov3640::QVGA);
 
         // Continuous frames.
         // HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)buff, GetSize (current_resolution));
 
         // Single frame
-        HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_SNAPSHOT, reinterpret_cast<uint32_t> (buf), size);
+        status = HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_SNAPSHOT, reinterpret_cast<uint32_t> (buf), size);
+
+        if (status != HAL_OK) {
+                Error_Handler ();
+        }
 }
 
 /*---------------------------------------------------------------------------*/
@@ -272,42 +245,11 @@ void CAMERA_IO_Init ()
         }
 }
 
-// byte ArduCAM::wrSensorReg16_8(int regID, int regDat)
-//{
-//    #if defined (RASPBERRY_PI)
-//        arducam_i2c_word_write(regID, regDat);
-//        arducam_delay_ms(1);
-//    #else
-//        Wire.beginTransmission(sensor_addr >> 1);
-//      Wire.write(regID >> 8);            // sends instruction byte, MSB first
-//      Wire.write(regID & 0x00FF);
-//      Wire.write(regDat & 0x00FF);
-//      if (Wire.endTransmission())
-//      {
-//        return 0;
-//      }
-//      delay(1);
-//    #endif
-//    return 1;
-//}
-
 /**
  * @brief  Camera delay..
  * @param  Delay: Delay in ms
  */
 void CAMERA_Delay (uint32_t Delay) { HAL_Delay (Delay); }
-
-// void initAndShot ()
-//{
-//        /* Initialize the Camera */
-//        BSP_CAMERA_Init (RESOLUTION_R480x272);
-
-//        /* Wait 1s before Camera snapshot */
-//        HAL_Delay (1000);
-
-//        /* Start the Camera Capture */
-//        BSP_CAMERA_SnapshotStart ((uint8_t *)CAMERA_FRAME_BUFFER);
-//}
 
 /*****************************************************************************/
 /* /Camera                                                                   */
@@ -342,9 +284,8 @@ int main ()
         /* -1- Initialize LEDs mounted on STM32H743ZI-NUCLEO board */
         //        BSP_LED_Init (LED1);
 
-        uint32_t resolution = RESOLUTION_R480x272;
-        uint8_t buffer[getResolutionSize (resolution)];
-        myCamera (buffer, sizeof (buffer), resolution);
+        uint8_t buffer[0x9600];
+        myCamera (buffer, sizeof (buffer));
 
         /* Infinite loop */
         volatile double dd = 0;

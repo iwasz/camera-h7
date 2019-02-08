@@ -28,7 +28,11 @@ public:
         // OV7670 = 0x42 (0x21);
         // Pozostałe 0x78 (0x3c)
 
-        static constexpr uint8_t SENSOR_I2C_ADDRESS = 0x42;
+        // Ten adres jest OK dla czarnej z długim obiektywem.
+        //static constexpr uint8_t SENSOR_I2C_ADDRESS = 0x42;
+
+        // To jest OK dla czerwonej.
+        static constexpr uint8_t SENSOR_I2C_ADDRESS = 0x78;
 
         enum JpegResolution : uint8_t {
                 OV3640_176x144 = 0,   // 176x144
@@ -142,8 +146,11 @@ public:
 
         void setMirrorFlip (MirrorFlip mirrorFlip);
 
+        uint16_t getProductId ();
+
 private:
         void wrSensorRegs16_8 (SensorReg const reglist[], size_t len);
+        void wrSensorReg8_8 (uint8_t regID, uint8_t regDat);
         void wrSensorReg16_8 (uint16_t regID, uint8_t regDat);
         uint8_t rdSensorReg16_8 (uint16_t regId);
 };

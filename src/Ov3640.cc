@@ -11,6 +11,11 @@
 //#include <etl/array_view.h>
 #include <iterator>
 
+// TODO delete - szhould use a driver (I2C class)
+#include "stm32h7xx_hal.h"
+extern I2C_HandleTypeDef hi2c1;
+extern "C" void Error_Handler ();
+
 #define OV3640_CHIPID_HIGH 0x300a
 #define OV3640_CHIPID_LOW 0x300b
 
@@ -53,73 +58,77 @@ const Ov3640::SensorReg OV3640_QVGA[] = {
 const Ov3640::SensorReg OV3640_176x144_JPEG[] = {
         { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x00 }, { 0x3363, 0xb8 }, { 0x3364, 0x94 },
         { 0x3403, 0x42 }, { 0x3088, 0x00 }, { 0x3089, 0xb0 }, { 0x308a, 0x00 }, { 0x308b, 0x90 }, { 0x304c, 0x84 },
-
-        { 0xffff, 0xff },
 };
 
 const Ov3640::SensorReg OV3640_320x240_JPEG[] = {
         { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x01 }, { 0x3363, 0x48 }, { 0x3364, 0xf4 },
         { 0x3403, 0x42 }, { 0x3088, 0x01 }, { 0x3089, 0x40 }, { 0x308a, 0x00 }, { 0x308b, 0xf0 },
-
-        { 0xffff, 0xff },
 };
 
 const Ov3640::SensorReg OV3640_352x288_JPEG[] = {
         { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x11 }, { 0x3363, 0x68 },
         { 0x3364, 0x24 }, { 0x3403, 0x42 }, { 0x3088, 0x01 }, { 0x3089, 0x60 }, { 0x308a, 0x01 }, { 0x308b, 0x20 },
-
-        { 0xffff, 0xff },
 };
 
 const Ov3640::SensorReg OV3640_640x480_JPEG[] = {
         { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x12 }, { 0x3363, 0x88 }, { 0x3364, 0xe4 },
         { 0x3403, 0x42 }, { 0x3088, 0x02 }, { 0x3089, 0x80 }, { 0x308a, 0x01 }, { 0x308b, 0xe0 }, { 0x304c, 0x84 },
-
-        { 0xffff, 0xff },
 };
 const Ov3640::SensorReg OV3640_800x600_JPEG[] = {
         { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x23 }, { 0x3363, 0x28 }, { 0x3364, 0x5c },
         { 0x3403, 0x42 }, { 0x3088, 0x03 }, { 0x3089, 0x20 }, { 0x308a, 0x02 }, { 0x308b, 0x58 }, { 0x304c, 0x82 },
-
-        { 0xffff, 0xff },
 };
 
 const Ov3640::SensorReg OV3640_1024x768_JPEG[] = {
         { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x34 }, { 0x3363, 0x08 }, { 0x3364, 0x06 },
         { 0x3403, 0x42 }, { 0x3088, 0x04 }, { 0x3089, 0x00 }, { 0x308a, 0x03 }, { 0x308b, 0x00 }, { 0x304c, 0x82 },
-
-        { 0xffff, 0xff },
 };
 
 const Ov3640::SensorReg OV3640_1600x1200_JPEG[] = {
         { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0C }, { 0x3362, 0x46 }, { 0x3363, 0x48 }, { 0x3364, 0xb4 },
         { 0x3403, 0x42 }, { 0x3088, 0x06 }, { 0x3089, 0x40 }, { 0x308a, 0x04 }, { 0x308b, 0xb0 }, { 0x304c, 0x85 },
 
-        { 0xffff, 0xff },
-
 };
 const Ov3640::SensorReg OV3640_1280x960_JPEG[] = {
         { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x35 }, { 0x3363, 0x08 }, { 0x3364, 0xc4 },
         { 0x3403, 0x42 }, { 0x3088, 0x05 }, { 0x3089, 0x00 }, { 0x308a, 0x03 }, { 0x308b, 0xc0 }, { 0x304c, 0x81 },
-
-        { 0xffff, 0xff },
 };
 
 const Ov3640::SensorReg OV3640_2048x1536_JPEG[] = {
         { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x68 }, { 0x3363, 0x08 },
         { 0x3364, 0x04 }, { 0x3403, 0x42 }, { 0x3088, 0x08 }, { 0x3089, 0x00 }, { 0x308a, 0x06 }, { 0x308b, 0x00 },
-
-        { 0xffff, 0xff },
 };
 
 Ov3640::Ov3640 (SensorResolution resolution)
 {
+        //        for (int i = 0; i < 256; ++i) {
+        //                HAL_StatusTypeDef status = HAL_OK;
+
+        //                uint8_t value = i;
+        //                status = HAL_I2C_Mem_Write (&hi2c1, i, i, I2C_MEMADD_SIZE_8BIT, &value, 1, 1000);
+        //        }
+
+        HAL_Delay (500);
+
+        if (getProductId () != 0x364c) {
+                while (true) {
+                }
+        }
+
         if (resolution == SensorResolution::QVGA) {
                 wrSensorRegs16_8 (OV3640_QVGA, std::size (OV3640_QVGA));
         }
         else if (resolution == SensorResolution::VGA) {
                 wrSensorRegs16_8 (OV3640_VGA, std::size (OV3640_VGA));
         }
+
+        setJpegSize (OV3640_320x240);
+
+        HAL_Delay (500);
+
+        // RAW nie JPEG - sprawdzić
+        // wrSensorReg16_8 (0x3818, 0x81);
+        // wrSensorReg16_8 (0x3621, 0xA7);
 }
 
 void Ov3640::setJpegSize (JpegResolution size)
@@ -549,11 +558,6 @@ void Ov3640::setMirrorFlip (MirrorFlip mirrorFlip)
         }
 }
 
-// TODO delete
-#include "stm32h7xx_hal.h"
-extern I2C_HandleTypeDef hi2c1;
-extern "C" void Error_Handler ();
-
 // Write 8 bit values to 16 bit register address
 void Ov3640::wrSensorRegs16_8 (SensorReg const reglist[], size_t len)
 {
@@ -586,24 +590,22 @@ void Ov3640::wrSensorRegs16_8 (SensorReg const reglist[], size_t len)
 // Read/write 8 bit value to/from 16 bit register address
 void Ov3640::wrSensorReg16_8 (uint16_t regId, uint8_t value)
 {
-        //#if defined(RASPBERRY_PI)
-        //        Ov3640_i2c_word_write (regID, regDat);
-        //        Ov3640_delay_ms (1);
-        //#else
-        //        Wire.beginTransmission (sensor_addr >> 1);
-        //        Wire.write (regID >> 8); // sends instruction byte, MSB first
-        //        Wire.write (regID & 0x00FF);
-        //        Wire.write (regDat & 0x00FF);
-        //        if (Wire.endTransmission ()) {
-        //                return 0;
-        //        }
-        //        delay (1);
-        //#endif
-        //        return 1;
-
         HAL_StatusTypeDef status = HAL_OK;
 
         status = HAL_I2C_Mem_Write (&hi2c1, SENSOR_I2C_ADDRESS, regId, I2C_MEMADD_SIZE_16BIT, &value, 1, 1000);
+
+        /* Check the communication status */
+        if (status != HAL_OK) {
+                /* Execute user timeout callback */
+                Error_Handler ();
+        }
+}
+
+void Ov3640::wrSensorReg8_8 (uint8_t regId, uint8_t value)
+{
+        HAL_StatusTypeDef status = HAL_OK;
+
+        status = HAL_I2C_Mem_Write (&hi2c1, SENSOR_I2C_ADDRESS, regId, I2C_MEMADD_SIZE_8BIT, &value, 1, 1000);
 
         /* Check the communication status */
         if (status != HAL_OK) {
@@ -630,15 +632,38 @@ uint8_t Ov3640::rdSensorReg16_8 (uint16_t regId)
         //        return 1;
 
         HAL_StatusTypeDef status = HAL_OK;
-        uint8_t value = 0;
 
-        status = HAL_I2C_Mem_Read (&hi2c1, SENSOR_I2C_ADDRESS, regId, I2C_MEMADD_SIZE_16BIT, &value, 1, 1000);
+        status = HAL_I2C_Master_Transmit (&hi2c1, SENSOR_I2C_ADDRESS, reinterpret_cast<uint8_t *> (&regId), 2, 1000);
 
-        /* Check the communication status */
         if (status != HAL_OK) {
-                /* Execute user timeout callback */
+                Error_Handler ();
+        }
+
+        uint8_t value = 0;
+        status = HAL_I2C_Master_Receive (&hi2c1, SENSOR_I2C_ADDRESS, &value, 1, 1000);
+
+        if (status != HAL_OK) {
                 Error_Handler ();
         }
 
         return value;
+
+        //        status = HAL_I2C_Mem_Read (&hi2c1, SENSOR_I2C_ADDRESS, regId, I2C_MEMADD_SIZE_16BIT, &value, 1, 1000);
+
+        //        /* Check the communication status */
+        //        if (status != HAL_OK) {
+        //                /* Execute user timeout callback */
+        //                Error_Handler ();
+        //        }
+
+        //        return value;
+}
+
+uint16_t Ov3640::getProductId ()
+{
+        wrSensorReg8_8 (0xff, 0x01);
+        uint8_t pidH = rdSensorReg16_8 (0x0a30); // MSB of PID. Address of the register is swapped.
+        uint8_t pidL = rdSensorReg16_8 (0x0b30); // MSB of PID. Address of the register is swapped.
+
+        return (uint16_t (pidH) << 8) | (uint16_t (pidL) & 0xff);
 }
