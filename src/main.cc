@@ -68,8 +68,8 @@ void myCamera (uint8_t *buf, size_t size)
         hdcmi.Instance = DCMI;
         hdcmi.Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
         hdcmi.Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
-        hdcmi.Init.VSPolarity = DCMI_VSPOLARITY_HIGH;
-        hdcmi.Init.HSPolarity = DCMI_HSPOLARITY_HIGH;
+        hdcmi.Init.VSPolarity = DCMI_VSPOLARITY_LOW;
+        hdcmi.Init.HSPolarity = DCMI_HSPOLARITY_LOW;
         hdcmi.Init.CaptureRate = DCMI_CR_ALL_FRAME;
         hdcmi.Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
         hdcmi.Init.JPEGMode = DCMI_JPEG_DISABLE;
@@ -289,7 +289,7 @@ int main ()
 
         initialise_monitor_handles ();
         printf ("Semihosting on camera-h7 project. Hello.");
-        static constexpr size_t BUF_SIZE = 4 * 20000;
+        static constexpr size_t BUF_SIZE = 128000;
         // uint8_t buffer[BUF_SIZE];
 
         uint8_t *buffer = new (reinterpret_cast<void *> (0x24000000)) uint8_t[BUF_SIZE];
