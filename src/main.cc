@@ -6,8 +6,13 @@
  *  ~~~~~~~~~                                                               *
  ****************************************************************************/
 
+#include "../../ium/ium-lite/src/StringQueue.h"
+#include "Blinker.h"
+#include "Debug.h"
+#include "Gpio.h"
+#include "Hal.h"
 #include "Ov3640.h"
-#include "stm32h7xx_hal.h"
+#include "Usart.h"
 #include <cerrno>
 #include <cmath>
 #include <cstdio>
@@ -187,7 +192,7 @@ void myCamera (uint8_t *buf, size_t size)
 
         /*---------------------------------------------------------------------------*/
 
-        static Ov3640 camera (Ov3640::QVGA);
+        //        static Ov3640 camera (Ov3640::QVGA);
 
         // Continuous frames.
         // HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)buff, GetSize (current_resolution));
@@ -260,7 +265,6 @@ void CAMERA_Delay (uint32_t Delay) { HAL_Delay (Delay); }
 
 int main ()
 {
-
         /* Enable I-Cache */
         SCB_EnableICache ();
 
@@ -284,6 +288,16 @@ int main ()
         /* Configure the system clock to 400 MHz */
         SystemClock_Config ();
 
+        Gpio led (GPIOB, GPIO_PIN_14);
+        Blinker<4> blink (&led, 1000, 50, 100, 50);
+
+        Gpio espGpio1 (GPIOA, GPIO_PIN_3, GPIO_MODE_AF_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_HIGH, GPIO_AF7_USART2);
+        Gpio espGpio2 (GPIOD, GPIO_PIN_5, GPIO_MODE_AF_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_HIGH, GPIO_AF7_USART2);
+        Usart espUart (USART2, 115200);
+
+        HAL_Delay (100);
+        espUart.transmit ("AT\r\n");
+
         /* -1- Initialize LEDs mounted on STM32H743ZI-NUCLEO board */
         //        BSP_LED_Init (LED1);
 
@@ -296,6 +310,7 @@ int main ()
 
         memset (buffer, 0, BUF_SIZE);
         myCamera (buffer, BUF_SIZE);
+
         HAL_Delay (500);
 
         FILE *f = fopen ("data.dat", "w");
@@ -311,7 +326,7 @@ int main ()
         /* Infinite loop */
         volatile double dd = 0;
         while (1) {
-                ++dd;
+                blink.run ();
         }
 }
 
@@ -390,6 +405,68 @@ void SystemClock_Config (void)
 
 /*****************************************************************************/
 
+class MySink : public ICharacterSink {
+public:
+        MySink (StringQueue &g) : gsmQueue (g) {}
+        virtual ~MySink () {}
+        virtual void onData (char c);
+
+private:
+        uint16_t rxBufferGsmPos = 0;
+        char rxBufferGsm[128]; /// Bufor wejściowy na odpowiedzi z modemu. Mamy własny, gdyż kolejka może się w między czasie wyczyścić.
+        StringQueue &gsmQueue;
+
+        static char allData[256];
+        uint8_t allDataCnt = 0;
+};
+
+char MySink::allData[256];
+
+/*****************************************************************************/
+
+void MySink::onData (char c)
+{
+        if (!std::isprint (c) && c != '\r' && c != '\n') {
+                return;
+        }
+
+        allData[allDataCnt++] = c;
+
+        if (rxBufferGsmPos > 0 && (c == '\r' || c == '\n')) {
+
+                rxBufferGsm[rxBufferGsmPos] = '\0';
+
+                // Nie wrzucamy na kolejkę odpowiedzi, które zawierają tylko \r\n
+                if (rxBufferGsmPos > 1) {
+#if 0
+                        debug->print ("rx : ");
+                        debug->println (rxBufferGsm);
+#endif
+
+                        //  __disable_irq ();
+
+                        if (!gsmQueue.push_back ()) {
+                                Error_Handler ();
+                        }
+
+                        char *queueBuffer = gsmQueue.back ();
+                        strcpy (queueBuffer, rxBufferGsm);
+                        // __enable_irq ();
+                }
+
+                rxBufferGsmPos = 0;
+        }
+        else if (std::isprint (c)) {
+                rxBufferGsm[rxBufferGsmPos++] = c;
+        }
+}
+
+/*****************************************************************************/
+
+int onData (uint8_t *data) { ::debug->printArray (data, 1); }
+
+/*****************************************************************************/
+
 namespace __gnu_cxx {
 void __verbose_terminate_handler ()
 {
@@ -397,9 +474,3 @@ void __verbose_terminate_handler ()
                 ;
 }
 } // namespace __gnu_cxx
-
-extern "C" void Error_Handler ()
-{
-        while (true) {
-        }
-}

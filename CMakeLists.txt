@@ -5,7 +5,7 @@ PROJECT (camera-h7)
 ENABLE_LANGUAGE (ASM-ATT)
 
 INCLUDE_DIRECTORIES("src/")
-#INCLUDE_DIRECTORIES("../../libmicro/src/")
+INCLUDE_DIRECTORIES("../libmicro/src/")
 INCLUDE_DIRECTORIES("../etl/include/")
 
 # Resonator used in this project
@@ -36,6 +36,28 @@ ADD_EXECUTABLE(${CMAKE_PROJECT_NAME}.elf
     "src/Ov3640.cc"
 #    "src/stm324x9i_eval_io.h"
 #    "src/stm324x9i_eval.h"
+
+    "../libmicro/src/Blinker.h"
+    "../libmicro/src/ErrorHandler.h"
+    "../libmicro/src/ErrorHandler.c"
+    "../libmicro/src/Hal.h"
+    "../libmicro/src/HalStm32H7.h"
+    "../libmicro/src/TimerF.cc"
+    "../libmicro/src/Timer.h"
+    "../libmicro/src/Debug.cc"
+    "../libmicro/src/Debug.h"
+    "../libmicro/src/debug.h"
+    "../libmicro/src/Gpio.h"
+    "../libmicro/src/GpioF.h"
+    "../libmicro/src/GpioH.cc"
+    "../libmicro/src/GpioH7.cc"
+    "../libmicro/src/Usart.h"
+    "../libmicro/src/UsartF.cc"
+    "../libmicro/src/UsartF.h"
+    "../libmicro/src/UsartF4.cc"
+    "../libmicro/src/collection/Queue.h"
+    "../libmicro/src/collection/CircularBuffer.h"
+    "../libmicro/src/collection/CircularBuffer.cc"
 )
 
 # +--------------+
