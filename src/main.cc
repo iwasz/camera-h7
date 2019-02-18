@@ -13,6 +13,7 @@
 #include "Hal.h"
 #include "Ov3640.h"
 #include "Usart.h"
+#include "communicationInterface/esp8266/Esp8266.h"
 #include <cerrno>
 #include <cmath>
 #include <cstdio>
@@ -24,6 +25,31 @@
 static void SystemClock_Config ();
 extern "C" void Error_Handler ();
 extern "C" void initialise_monitor_handles ();
+
+/*****************************************************************************/
+
+/**
+ * TODO improve. Can priority inversion occur?
+ */
+class MySink : public ICharacterSink {
+public:
+        MySink (StringQueue &g) : gsmQueue (g) {}
+        virtual ~MySink () {}
+        void onData (char c);
+        void onError (uint32_t flags)
+        {
+                // silently discard all errors, because my ESP sometimes outputs gibberish after reset
+        }
+
+private:
+        uint16_t rxBufferGsmPos = 0;
+        char rxBufferGsm[128]; /// Bufor wejściowy na odpowiedzi z modemu. Mamy własny, gdyż kolejka może się w między czasie wyczyścić.
+        StringQueue &gsmQueue;
+
+        //        static char allData[256];
+        //        uint8_t allDataCnt = 0;
+};
+
 /*****************************************************************************/
 /* Camera                                                                    */
 /*****************************************************************************/
@@ -291,12 +317,26 @@ int main ()
         Gpio led (GPIOB, GPIO_PIN_14);
         Blinker<4> blink (&led, 1000, 50, 100, 50);
 
+        Gpio debugGpio (GPIOD, GPIO_PIN_8 | GPIO_PIN_9, GPIO_MODE_AF_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_HIGH, GPIO_AF7_USART3);
+        Usart debugUart (USART3, 115200);
+
+        Debug debug (&debugUart);
+        Debug::singleton () = &debug;
+        ::debug = Debug::singleton ();
+        ::debug->println ("camera test");
+
         Gpio espGpio1 (GPIOA, GPIO_PIN_3, GPIO_MODE_AF_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_HIGH, GPIO_AF7_USART2);
         Gpio espGpio2 (GPIOD, GPIO_PIN_5, GPIO_MODE_AF_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_HIGH, GPIO_AF7_USART2);
+        HAL_NVIC_SetPriority (USART2_IRQn, 0x0F, 0);
+        HAL_NVIC_EnableIRQ (USART2_IRQn);
         Usart espUart (USART2, 115200);
 
-        HAL_Delay (100);
-        espUart.transmit ("AT\r\n");
+        // TODO może inna struktura danych
+        StringQueue gsmQueue (32);
+        MySink modemResponseSink (gsmQueue);
+        espUart.setSink (&modemResponseSink);
+        Esp8266 esp8266 (espUart, gsmQueue);
+        espUart.startReceive ();
 
         /* -1- Initialize LEDs mounted on STM32H743ZI-NUCLEO board */
         //        BSP_LED_Init (LED1);
@@ -327,6 +367,7 @@ int main ()
         volatile double dd = 0;
         while (1) {
                 blink.run ();
+                esp8266.run ();
         }
 }
 
@@ -403,24 +444,7 @@ void SystemClock_Config (void)
         HAL_EnableCompensationCell ();
 }
 
-/*****************************************************************************/
-
-class MySink : public ICharacterSink {
-public:
-        MySink (StringQueue &g) : gsmQueue (g) {}
-        virtual ~MySink () {}
-        virtual void onData (char c);
-
-private:
-        uint16_t rxBufferGsmPos = 0;
-        char rxBufferGsm[128]; /// Bufor wejściowy na odpowiedzi z modemu. Mamy własny, gdyż kolejka może się w między czasie wyczyścić.
-        StringQueue &gsmQueue;
-
-        static char allData[256];
-        uint8_t allDataCnt = 0;
-};
-
-char MySink::allData[256];
+// char MySink::allData[256];
 
 /*****************************************************************************/
 
@@ -430,7 +454,7 @@ void MySink::onData (char c)
                 return;
         }
 
-        allData[allDataCnt++] = c;
+        //        allData[allDataCnt++] = c;
 
         if (rxBufferGsmPos > 0 && (c == '\r' || c == '\n')) {
 

@@ -7,6 +7,8 @@ ENABLE_LANGUAGE (ASM-ATT)
 INCLUDE_DIRECTORIES("src/")
 INCLUDE_DIRECTORIES("../libmicro/src/")
 INCLUDE_DIRECTORIES("../etl/include/")
+# Remove this, refactor this dependency
+INCLUDE_DIRECTORIES("../ium/ium-lite/src")
 
 # Resonator used in this project
 #ADD_DEFINITIONS (-DHSE_VALUE=8000000)
@@ -26,16 +28,14 @@ INCLUDE_DIRECTORIES("../etl/include/")
 # +-----------------+
 ADD_EXECUTABLE(${CMAKE_PROJECT_NAME}.elf
     "src/main.cc"
-#    "src/stm324x9i_eval_camera.cc"
-#    "src/stm324x9i_eval_camera.h"
-#    "src/camera.h"
-#    "src/ov2640.cc"
-#    "src/ov2640.h"
-#    "src/ov3640_regs.h"
     "src/Ov3640.h"
     "src/Ov3640.cc"
-#    "src/stm324x9i_eval_io.h"
-#    "src/stm324x9i_eval.h"
+    "src/communicationInterface/AtCommandAction.cc"
+    "src/communicationInterface/AtCommandAction.h"
+    "src/communicationInterface/esp8266/Esp8266.cc"
+    "src/communicationInterface/esp8266/Esp8266.h"
+    "src/communicationInterface/esp8266/SendNetworkAction.cc"
+    "src/communicationInterface/esp8266/SendNetworkAction.h"
 
     "../libmicro/src/Blinker.h"
     "../libmicro/src/ErrorHandler.h"
@@ -58,6 +58,46 @@ ADD_EXECUTABLE(${CMAKE_PROJECT_NAME}.elf
     "../libmicro/src/collection/Queue.h"
     "../libmicro/src/collection/CircularBuffer.h"
     "../libmicro/src/collection/CircularBuffer.cc"
+
+    "../ium/ium-lite/src/stateMachine/Operation.h"
+    "../ium/ium-lite/src/stateMachine/Action.h"
+    "../ium/ium-lite/src/stateMachine/Action.cc"
+    "../ium/ium-lite/src/stateMachine/DelayAction.h"
+    "../ium/ium-lite/src/stateMachine/DelayAction.cc"
+    "../ium/ium-lite/src/stateMachine/State.h"
+    "../ium/ium-lite/src/stateMachine/State.cc"
+    "../ium/ium-lite/src/stateMachine/StateMachine.cc"
+    "../ium/ium-lite/src/stateMachine/StateMachine.h"
+    "../ium/ium-lite/src/stateMachine/TimeCounter.cc"
+    "../ium/ium-lite/src/stateMachine/TimeCounter.h"
+    "../ium/ium-lite/src/stateMachine/Transition.h"
+    "../ium/ium-lite/src/stateMachine/Transition.cc"
+    "../ium/ium-lite/src/stateMachine/Condition.h"
+    "../ium/ium-lite/src/stateMachine/Condition.cc"
+    "../ium/ium-lite/src/stateMachine/StringCondition.h"
+    "../ium/ium-lite/src/stateMachine/StringCondition.cc"
+    "../ium/ium-lite/src/stateMachine/TimePassedCondition.h"
+    "../ium/ium-lite/src/stateMachine/TimePassedCondition.cc"
+    "../ium/ium-lite/src/stateMachine/BeginsWithCondition.h"
+    "../ium/ium-lite/src/stateMachine/BeginsWithCondition.cc"
+    "../ium/ium-lite/src/stateMachine/LikeCondition.h"
+    "../ium/ium-lite/src/stateMachine/LikeCondition.cc"
+    "../ium/ium-lite/src/stateMachine/NotCondition.h"
+    "../ium/ium-lite/src/stateMachine/NotCondition.cc"
+    "../ium/ium-lite/src/stateMachine/BoolCondition.h"
+    "../ium/ium-lite/src/stateMachine/BoolAction.h"
+    "../ium/ium-lite/src/stateMachine/IntegerAction.h"
+    "../ium/ium-lite/src/stateMachine/IntegerAction.cc"
+    "../ium/ium-lite/src/stateMachine/IntegerCondition.h"
+    "../ium/ium-lite/src/stateMachine/IntegerCondition.cc"
+    "../ium/ium-lite/src/stateMachine/OrCondition.h"
+    "../ium/ium-lite/src/stateMachine/OrCondition.cc"
+    "../ium/ium-lite/src/stateMachine/AndCondition.h"
+    "../ium/ium-lite/src/stateMachine/AndCondition.cc"
+    "../ium/ium-lite/src/stateMachine/StateChangeAction.cc"
+    "../ium/ium-lite/src/stateMachine/StateChangeAction.h"
+    "../ium/ium-lite/src/stateMachine/StateCondition.cc"
+    "../ium/ium-lite/src/stateMachine/StateCondition.h"
 )
 
 # +--------------+
