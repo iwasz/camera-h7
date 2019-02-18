@@ -19,11 +19,11 @@ enum ModemState : size_t {
         RESET_STAGE_POWER_ON,
         INIT,
         LIST_ACCESS_POINTS,
-        ENTER_PIN,
+        CONNECT_TO_ACCESS_POINT,
         SIGNAL_QUALITY_CHECK,
-        NETWORK_REGISTRATION_CHECK,
-        GPRS_ATTACH,
-        PDP_CONTEXT_CHECK,
+        VERIFY_CONNECTED_ACCESS_POINT,
+        CHECK_MY_IP,
+        SET_MULTI_CONNECTION_MODE,
         ACTIVATE_PDP_CONTEXT,
         APN_USER_PASSWD_INPUT,
         GPRS_CONNECTION_UP,
@@ -79,8 +79,6 @@ Esp8266::Esp8266 (Usart &u, StringQueue &g) : WifiCard (u), outputBuffer (2048),
 
         StateMachine *m = &machine;
 
-        /* clang-format off */
-
         static TimePassedCondition softResetDelay (SOFT_RESET_DELAY_MS, &gsmTimeCounter);
         static TimePassedCondition hardResetDelay (HARD_RESET_DELAY_MS, &gsmTimeCounter);
         static_assert (HARD_RESET_DELAY_MS < SOFT_RESET_DELAY_MS, "HARD_RESET_DELAY_MS musi być mniejsze niż SOFT_RESET_DELAY_MS");
@@ -89,6 +87,7 @@ Esp8266::Esp8266 (Usart &u, StringQueue &g) : WifiCard (u), outputBuffer (2048),
         /*---------------------------------------------------------------------------*/
         /*--HARD-I-SOFT-RESET--------------------------------------------------------*/
         /*---------------------------------------------------------------------------*/
+        /* clang-format off */
 
         m->transition (INIT)->when (&softResetDelay);
 
@@ -102,9 +101,25 @@ Esp8266::Esp8266 (Usart &u, StringQueue &g) : WifiCard (u), outputBuffer (2048),
                 ->transition (LIST_ACCESS_POINTS)->when (eq ("ready"))->then (&delay);
 
         m->state (LIST_ACCESS_POINTS)->entry (at ("AT+CWLAP\r\n"))
-                ->transition (SIGNAL_QUALITY_CHECK)->when (anded (eq ("+CPIN: READY"), &ok))->then (&delay)
-                ->transition (LIST_ACCESS_POINTS)->when (&error)->then (delayMs (4000))
-                ->transition (ENTER_PIN)->when (anded (eq ("+CPIN: SIM PIN"), &ok))->then (&delay);
+                ->transition (CONNECT_TO_ACCESS_POINT)->when (like ("%Honor 9%"))->then (&delay);
+
+        m->state (CONNECT_TO_ACCESS_POINT)->entry (at ("AT+CWJAP=\"Honor 9\",\"f386dd74bbc3\"\r\n"))
+                ->transition (VERIFY_CONNECTED_ACCESS_POINT)->when (&ok)->then (&delay);
+
+        m->state (VERIFY_CONNECTED_ACCESS_POINT)->entry (at ("AT+CWJAP?\r\n"))
+                ->transition (VERIFY_CONNECTED_ACCESS_POINT)->when (anded (eq ("AT+CWJAP?"), beginsWith ("busy")))->then (delayMs (5000))
+                ->transition (CHECK_MY_IP)->when (like ("%Honor 9%"))->then (&delay);
+
+        m->state (CHECK_MY_IP)->entry (at ("AT+CIFSR\r\n"))
+                ->transition (SET_MULTI_CONNECTION_MODE)->when (like ("%.%.%.%"))->then (&delay)
+                ->transition (LIST_ACCESS_POINTS)->when (&error)->then (&delay);
+
+        m->state (SET_MULTI_CONNECTION_MODE)->entry (at ("AT+CIPMUX=1\r\n"))
+                ->transition (CONNECT_TO_SERVER)->when (anded (eq ("AT+CIPMUX=1"), &ok))->then (&delay);
+
+        m->state (CONNECT_TO_SERVER)->entry (at ("AT+CIPSTART=0,\"TCP\",\"www.google.com\",80\r\n"))
+                ;//->transition (CHECK_MY_IP)->when (like ("Honor 9"))->then (&delay);
+
 
 #if 0
         m->state (ENTER_PIN)->entry (gsm ("AT+CPIN=1220\r\n"))
