@@ -160,11 +160,10 @@ Esp8266::Esp8266 (Usart &u, StringQueue &g) : WifiCard (u), outputBuffer (2048),
         // Wyłącz ECHO podczas wysyłania danych.
         m->state (NETWORK_ECHO_ON)->entry (at ("ATE1\r\n"))
                 ->transition (CLOSE_AND_RECONNECT)->when (&alwaysTrue);
+
+        /* clang-format on */
 }
 
 /*****************************************************************************/
 
-bool Esp8266::send(int connectionNumber, uint8_t *data, size_t len)
-{
-    return (outputBuffer.store(data, len) == len);
-}
+int Esp8266::send (int connectionNumber, uint8_t *data, size_t len) { outputBuffer.store (data, len); }

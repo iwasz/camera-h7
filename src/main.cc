@@ -358,10 +358,10 @@ int main ()
         static constexpr size_t BUF_SIZE = 128000;
         // uint8_t buffer[BUF_SIZE];
 
-        uint8_t *buffer = new (reinterpret_cast<void *> (0x24000000)) uint8_t[BUF_SIZE];
+        uint8_t *imageData = new (reinterpret_cast<void *> (0x24000000)) uint8_t[BUF_SIZE];
 
-        memset (buffer, 0, BUF_SIZE);
-        myCamera (buffer, BUF_SIZE);
+        memset (imageData, 0, BUF_SIZE);
+        myCamera (imageData, BUF_SIZE);
 
         HAL_Delay (500);
 
@@ -371,7 +371,7 @@ int main ()
                 Error_Handler ();
         }
 
-        fwrite (buffer, BUF_SIZE, 1, f);
+        fwrite (imageData, BUF_SIZE, 1, f);
 
         fclose (f);
         Timer t;
@@ -387,57 +387,13 @@ int main ()
                         cn_cbor_errback err;
                         const char *dataStr = "abc";
                         cn_cbor *cb_map = cn_cbor_map_create (&err);
-                        cn_cbor *cb_int;
-                        cn_cbor *cb_data;
-                        cn_cbor *cb_dbl;
-
-                        //        ASSERT_NOT_NULL (cb_map);
-                        //        ASSERT_TRUE (err.err == CN_CBOR_NO_ERROR);
-
-                        cb_int = cn_cbor_int_create (256, &err);
-
-                        //        ASSERT_NOT_NULL (cb_int);
-                        //        ASSERT_TRUE (err.err == CN_CBOR_NO_ERROR);
-
-                        cb_data = cn_cbor_data_create (reinterpret_cast<const uint8_t *> (dataStr), 4, &err);
-
-                        //        ASSERT_NOT_NULL (cb_data);
-                        //        ASSERT_TRUE (err.err == CN_CBOR_NO_ERROR);
-
-                        cb_dbl = cn_cbor_double_create (3.14159, &err);
-
-                        //        ASSERT_NOT_NULL (cb_dbl);
-                        //        ASSERT_TRUE (err.err == CN_CBOR_NO_ERROR);
-
-                        cn_cbor_mapput_int (cb_map, 5, cb_int, &err);
-
-                        //        ASSERT_TRUE (err.err == CN_CBOR_NO_ERROR);
-                        //        ASSERT_TRUE (cb_map->length == 2);
-
-                        cn_cbor_mapput_int (cb_map, -7, cb_data, &err);
-
-                        //        ASSERT_TRUE (err.err == CN_CBOR_NO_ERROR);
-                        //        ASSERT_TRUE (cb_map->length == 4);
-
-                        cn_cbor_mapput_string (cb_map, "foo", cn_cbor_string_create (dataStr, &err), &err);
-
-                        //        ASSERT_TRUE (err.err == CN_CBOR_NO_ERROR);
-                        //        ASSERT_TRUE (cb_map->length == 6);
-
-                        cn_cbor_map_put (cb_map, cn_cbor_string_create ("bar", &err), cn_cbor_string_create ("qux", &err), &err);
-
-                        //        ASSERT_TRUE (err.err == CN_CBOR_NO_ERROR);
-                        //        ASSERT_TRUE (cb_map->length == 8);
-
-                        cn_cbor_mapput_int (cb_map, 42, cb_dbl, &err);
-
                         cn_cbor_map_put (cb_map, cn_cbor_string_create ("systick", &err), cn_cbor_int_create (HAL_GetTick (), &err), &err);
+                        cn_cbor_map_put (cb_map, cn_cbor_string_create ("image", &err), cn_cbor_data_create (imageData, BUF_SIZE, &err), &err);
 
-                        //        ASSERT_TRUE (err.err == CN_CBOR_NO_ERROR);
-                        //        ASSERT_TRUE (cb_map->length == 10);
-
-                        uint8_t encodedCbor[1024];
-                        ssize_t encodedCborLen = cn_cbor_encoder_write (encodedCbor, 0, sizeof (encodedCbor), cb_map);
+                        // uint8_t encodedCbor[1024];
+                        // 0x24000000 + 128000
+                        uint8_t *encodedCbor = new (reinterpret_cast<void *> (0x2401F400)) uint8_t[BUF_SIZE + 1024];
+                        ssize_t encodedCborLen = cn_cbor_encoder_write (encodedCbor, 0, BUF_SIZE + 1024, cb_map);
 
                         //        ASSERT_DATA (enc_sz);
 
@@ -455,8 +411,10 @@ int main ()
                         data.password.cstring = nullptr;
                         data.MQTTVersion = 4;
 
-                        uint8_t encodedMqtt[2048];
-                        int encodedMqttLen = sizeof (encodedMqtt);
+                        // uint8_t encodedMqtt[2048];
+                        // 0x2401F400 + 128000 + 1024 -> ends at 0x2405E800 - 1
+                        uint8_t *encodedMqtt = new (reinterpret_cast<void *> (0x2403EC00)) uint8_t[BUF_SIZE + 2048];
+                        int encodedMqttLen = BUF_SIZE + 2048;
 
                         int len = MQTTSerialize_connect (encodedMqtt, encodedMqttLen, &data);
 
@@ -467,7 +425,9 @@ int main ()
 
                         len += MQTTSerialize_disconnect ((encodedMqtt + len), encodedMqttLen - len);
 
-                        esp8266.send (0, encodedMqtt, size_t (len));
+                        size_t offset = 0;
+                        while ((offset = esp8266.send (0, encodedMqtt + offset, size_t (len))) > 0) {
+                        }
 
                         //        if (rc == len) {
                         //                // printf ("Successfully published\n");

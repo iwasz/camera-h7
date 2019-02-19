@@ -25,7 +25,7 @@ struct ICommunicationInterface {
         };
 
         virtual ~ICommunicationInterface () = default;
-        virtual bool send (int connectionNumber, uint8_t *data, size_t len) = 0;
+        virtual int send (int connectionNumber, uint8_t *data, size_t len) = 0;
         Callback *callback = nullptr;
 };
 
@@ -61,7 +61,8 @@ private:
  * @brief The Bg96 class
  * TODO Do not CWLAP if already connected. ESP connects on its own when known AP is in range.
  * TODO Do not connect to AP as well if already connected (CWJAP disconnects and connects again in this situation).
- * TODO The addres we are connecting to is hardcoded. Api should have connect (returns ID/socket whatever) and disconnect like all normal APIS does.
+ * TODO The addres we are connecting to is hardcoded. Api should have connect (returns ID/socket whatever) and disconnect like all normal APIS
+ * does.
  * TODO Manage AP access somehow. Maybe some list of defined APs by the user?
  */
 class Esp8266 : public WifiCard {
@@ -69,7 +70,7 @@ public:
         Esp8266 (Usart &u, StringQueue &g);
         virtual ~Esp8266 () override = default;
 
-        bool send (int connectionNumber, uint8_t *data, size_t len) override;
+        int send (int connectionNumber, uint8_t *data, size_t len) override;
         void run () { machine.run (); }
 
 private:
