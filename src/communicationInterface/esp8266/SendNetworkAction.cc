@@ -9,13 +9,13 @@
 #include "SendNetworkAction.h"
 #include "Usart.h"
 #include "collection/CircularBuffer.h"
-#include "config.h"
+//#include "config.h"
 #include <cstring>
 //#include "string_utils.h"
 
 extern Usart *modemUsart;
 
-bool SendNetworkAction::run (const char *input)
+bool SendNetworkAction::run (const char *)
 {
 #ifndef UNIT_TEST
         /*
@@ -23,14 +23,14 @@ bool SendNetworkAction::run (const char *input)
          * wysyłanych w następnym kroku.
          */
         if (stage == STAGE_PREPARE) {
-                *bytesToSendInSendStage = parseCipsendRespoinse (input);
+                *bytesToSendInSendStage = MAX_BYTES_SEND;
 
-                if (GSM_MAX_BYTES_SEND < *bytesToSendInSendStage) {
-                        *bytesToSendInSendStage = GSM_MAX_BYTES_SEND;
-                }
+//                if (MAX_BYTES_SEND < *bytesToSendInSendStage) {
+//                        *bytesToSendInSendStage = MAX_BYTES_SEND;
+//                }
 
-                if (gsmBuffer->size () < *bytesToSendInSendStage) {
-                        *bytesToSendInSendStage = gsmBuffer->size ();
+                if (outputBuffer->size () < *bytesToSendInSendStage) {
+                        *bytesToSendInSendStage = outputBuffer->size ();
                 }
 
                 if (*bytesToSendInSendStage == 0) {
@@ -38,8 +38,8 @@ bool SendNetworkAction::run (const char *input)
                 }
 
                 // TODO zamienić na jakąś mniej pamięciożerną funkcję niż snprintf ?
-                static char command[CIPSEND_BUF_LEN];
-                snprintf (command, CIPSEND_BUF_LEN, "AT+QISEND=1,%lu\r\n", *bytesToSendInSendStage);
+                static char command[MAX_BYTES_SEND];
+                snprintf (command, MAX_BYTES_SEND, "AT+CIPSEND=0,%lu\r\n", *bytesToSendInSendStage);
                 modemUsart->transmit (command);
 #if 0
                 debug->log (GSM_SENT_USART, GSM_SENT_USART_T, command);
@@ -58,7 +58,7 @@ bool SendNetworkAction::run (const char *input)
 
                 uint8_t *partA, *partB;
                 size_t lenA, lenB;
-                gsmBuffer->retrieve (&partA, &lenA, &partB, &lenB, *bytesToSendInSendStage);
+                outputBuffer->retrieve (&partA, &lenA, &partB, &lenB, *bytesToSendInSendStage);
 
                 if (partA && lenA) {
                         modemUsart->transmit (partA, lenA);
@@ -72,7 +72,7 @@ bool SendNetworkAction::run (const char *input)
          * Zdjęcie wysłanej liczby bajtów z bufora.
          */
         else if (stage == STAGE_DECLARE) {
-                gsmBuffer->declareRead (*bytesToSendInSendStage);
+                outputBuffer->declareRead (*bytesToSendInSendStage);
                 // debug->log (GSM_DECLARED_SEND_B, GSM_DECLARED_SEND_B_T, bytesToSendInSendStage);
         }
 #endif

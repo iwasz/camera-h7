@@ -10,18 +10,13 @@ INCLUDE_DIRECTORIES("../etl/include/")
 # Remove this, refactor this dependency
 INCLUDE_DIRECTORIES("../ium/ium-lite/src")
 
-# Resonator used in this project
-#ADD_DEFINITIONS (-DHSE_VALUE=8000000)
 
-# Override linker script from libmicro cmake
-# SET (LINKER_SCRIPT "../src/STM32F407VG_FLASH.ld")
+SET (CN_CBOR_ROOT "../cn-cbor")
+INCLUDE_DIRECTORIES("${CN_CBOR_ROOT}/include")
 
-#SET (CMAKE_EXE_LINKER_FLAGS "-T ${LINKER_SCRIPT} -specs=rdimon.specs -Wl,--gc-sections" CACHE INTERNAL "")
-#SET (CMAKE_EXE_LINKER_FLAGS "-T ${LINKER_SCRIPT} -specs=nosys.specs -Wl,--gc-sections" CACHE INTERNAL "")
-#SET (CMAKE_EXE_LINKER_FLAGS "-T ${LINKER_SCRIPT} -Wl,--gc-sections" CACHE INTERNAL "")
+SET (MQTT_PACKET_SRC "../paho.mqtt.embedded-c/MQTTPacket/src")
+INCLUDE_DIRECTORIES("mqtt-x86" ${MQTT_PACKET_SRC})
 
-#SET(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -save-temps=obj" CACHE INTERNAL "")
-#SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -save-temps=obj" CACHE INTERNAL "")
 
 # +-----------------+
 # | My code         |
@@ -98,6 +93,32 @@ ADD_EXECUTABLE(${CMAKE_PROJECT_NAME}.elf
     "../ium/ium-lite/src/stateMachine/StateChangeAction.h"
     "../ium/ium-lite/src/stateMachine/StateCondition.cc"
     "../ium/ium-lite/src/stateMachine/StateCondition.h"
+
+    "${MQTT_PACKET_SRC}/MQTTConnectClient.c"
+    "${MQTT_PACKET_SRC}/MQTTConnect.h"
+    "${MQTT_PACKET_SRC}/MQTTConnectServer.c"
+    "${MQTT_PACKET_SRC}/MQTTDeserializePublish.c"
+    "${MQTT_PACKET_SRC}/MQTTFormat.c"
+    "${MQTT_PACKET_SRC}/MQTTFormat.h"
+    "${MQTT_PACKET_SRC}/MQTTPacket.c"
+    "${MQTT_PACKET_SRC}/MQTTPacket.h"
+    "${MQTT_PACKET_SRC}/MQTTPublish.h"
+    "${MQTT_PACKET_SRC}/MQTTSerializePublish.c"
+    "${MQTT_PACKET_SRC}/MQTTSubscribeClient.c"
+    "${MQTT_PACKET_SRC}/MQTTSubscribe.h"
+    "${MQTT_PACKET_SRC}/MQTTSubscribeServer.c"
+    "${MQTT_PACKET_SRC}/MQTTUnsubscribeClient.c"
+    "${MQTT_PACKET_SRC}/MQTTUnsubscribe.h"
+    "${MQTT_PACKET_SRC}/MQTTUnsubscribeServer.c"
+    "${MQTT_PACKET_SRC}/StackTrace.h"
+
+    "${CN_CBOR_ROOT}/include/cn-cbor/cn-cbor.h"
+    "${CN_CBOR_ROOT}/src/cbor.h"
+    "${CN_CBOR_ROOT}/src/cn-cbor.c"
+    "${CN_CBOR_ROOT}/src/cn-create.c"
+    "${CN_CBOR_ROOT}/src/cn-encoder.c"
+    "${CN_CBOR_ROOT}/src/cn-error.c"
+    "${CN_CBOR_ROOT}/src/cn-get.c"
 )
 
 # +--------------+
