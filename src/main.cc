@@ -13,6 +13,7 @@
 #include "Hal.h"
 #include "MQTTPacket.h"
 #include "Ov3640.h"
+#include "Pwm.h"
 #include "Usart.h"
 #include "cn-cbor/cn-cbor.h"
 #include "communicationInterface/esp8266/Esp8266.h"
@@ -56,8 +57,6 @@ private:
 /* Camera                                                                    */
 /*****************************************************************************/
 
-//#include "stm324x9i_eval_camera.h"
-
 I2C_HandleTypeDef hi2c1 = { 0 };
 DCMI_HandleTypeDef hdcmi = { 0 };
 DMA_HandleTypeDef hdma_dcmi = { 0 };
@@ -96,6 +95,17 @@ void BSP_CAMERA_DMA_IRQHandler (void) { HAL_DMA_IRQHandler (hdcmi.DMA_Handle); }
 
 void myCamera (uint8_t *buf, size_t size)
 {
+        // Clock generation
+        const int PWM_PERIOD = 200;
+
+        // TIM3 -> APB1 (100MHz) (Ponieważ prescaler jest 1, to CK_INT = 100MHz. Gdyby nie to, to CK_INT = 200Hz).
+        Pwm pwmLeft (TIM3, 1, 10 - 1);
+        pwmLeft.enableChannels (Pwm::CHANNEL2);
+        Gpio pwmLeftPin (GPIOB, GPIO_PIN_5, GPIO_MODE_AF_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_LOW, GPIO_AF2_TIM3);
+        pwmLeft.setDuty (Pwm::CHANNEL2, 5 - 1);
+
+        /*---------------------------------------------------------------------------*/
+
         HAL_StatusTypeDef status;
 
         hdcmi.Instance = DCMI;
@@ -220,7 +230,7 @@ void myCamera (uint8_t *buf, size_t size)
 
         /*---------------------------------------------------------------------------*/
 
-        //        static Ov3640 camera (Ov3640::QVGA);
+        static Ov3640 camera (Ov3640::QVGA);
 
         // Continuous frames.
         // HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)buff, GetSize (current_resolution));

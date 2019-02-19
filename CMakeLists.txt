@@ -50,6 +50,8 @@ ADD_EXECUTABLE(${CMAKE_PROJECT_NAME}.elf
     "../libmicro/src/UsartF.cc"
     "../libmicro/src/UsartF.h"
     "../libmicro/src/UsartF4.cc"
+    "../libmicro/src/Pwm.cc"
+    "../libmicro/src/Pwm.h"
     "../libmicro/src/collection/Queue.h"
     "../libmicro/src/collection/CircularBuffer.h"
     "../libmicro/src/collection/CircularBuffer.cc"
