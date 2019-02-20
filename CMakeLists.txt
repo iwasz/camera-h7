@@ -22,6 +22,7 @@ INCLUDE_DIRECTORIES("mqtt-x86" ${MQTT_PACKET_SRC})
 # | My code         |
 # +-----------------+
 ADD_EXECUTABLE(${CMAKE_PROJECT_NAME}.elf
+    "src/Credentials.h"
     "src/main.cc"
     "src/Ov3640.h"
     "src/Ov3640.cc"

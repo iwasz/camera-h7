@@ -11,6 +11,9 @@
 #include "communicationInterface/modem/GsmCommandAction.h"
 
 // TODO !!!! wywalić!
+#include "Credentials.h"
+
+// TODO !!!! wywalić!
 Usart *modemUsart;
 
 enum ModemState : size_t {
@@ -60,7 +63,7 @@ enum ModemState : size_t {
 
 /*****************************************************************************/
 
-Esp8266::Esp8266 (Usart &u, StringQueue &g) : WifiCard (u), outputBuffer (2048), gsmQueue (g), machine (&gsmQueue)
+Esp8266::Esp8266 (Usart &u, StringQueue &g) : WifiCard (u), outputBuffer (2048 * 3), gsmQueue (g), machine (&gsmQueue)
 {
         modemUsart = &u;
 
@@ -103,7 +106,7 @@ Esp8266::Esp8266 (Usart &u, StringQueue &g) : WifiCard (u), outputBuffer (2048),
                 ->transition (VERIFY_CONNECTED_ACCESS_POINT)->when (eq ("ready"))->then (&delay);
 
         m->state (VERIFY_CONNECTED_ACCESS_POINT)->entry (and_action (at ("AT+CWJAP?\r\n"), &delay))
-                ->transition (CHECK_MY_IP)->when (like ("%Honor 9%"))->then (&delay)
+                ->transition (CHECK_MY_IP)->when (like ("%" SSID "%"))->then (&delay)
                 ->transition (LIST_ACCESS_POINTS)->when (anded (eq ("AT+CWJAP?"), beginsWith ("busy")))->then (delayMs (5000))
                 ->transition (LIST_ACCESS_POINTS)->when (&alwaysTrue);
 
@@ -112,19 +115,20 @@ Esp8266::Esp8266 (Usart &u, StringQueue &g) : WifiCard (u), outputBuffer (2048),
                 ->transition (LIST_ACCESS_POINTS)->when (&error)->then (&delay);
 
         m->state (LIST_ACCESS_POINTS)->entry (at ("AT+CWLAP\r\n"))
-                ->transition (CONNECT_TO_ACCESS_POINT)->when (like ("%Honor 9%"))->then (&delay);
+                ->transition (CONNECT_TO_ACCESS_POINT)->when (like ("%" SSID "%"))->then (&delay);
 
-        m->state (CONNECT_TO_ACCESS_POINT)->entry (at ("AT+CWJAP=\"Honor 9\",\"f386dd74bbc3\"\r\n"))
+        m->state (CONNECT_TO_ACCESS_POINT)->entry (at ("AT+CWJAP=\"" SSID "\",\"" PASS "\"\r\n"))
                 ->transition (VERIFY_CONNECTED_ACCESS_POINT)->when (&ok)->then (&delay);
 
         m->state (SET_MULTI_CONNECTION_MODE)->entry (at ("AT+CIPMUX=1\r\n"))
-                ->transition (CLOSE_AND_RECONNECT)->when (anded (eq ("AT+CIPMUX=1"), &ok))->then (&delay);
+                ->transition (CONNECT_TO_SERVER)->when (anded (eq ("AT+CIPMUX=1"), &ok))->then (&delay);
 
-        m->state (CLOSE_AND_RECONNECT)->entry (and_action (at ("AT+CIPCLOSE=0\r\n"), &delay))
-                ->transition (CONNECT_TO_SERVER)->when(&alwaysTrue)->then (&delay);
+//        m->state (CLOSE_AND_RECONNECT)->entry (and_action (at ("AT+CIPCLOSE=0\r\n"), &delay))
+//                ->transition (CONNECT_TO_SERVER)->when(&alwaysTrue)->then (&delay);
 
         m->state (CONNECT_TO_SERVER)->entry (at ("AT+CIPSTART=0,\"TCP\",\"trackmatevm.cloudapp.net\",1883\r\n"))
-                ->transition (NETWORK_ECHO_OFF)->when (anded (like ("%,CONNECT"), &ok))->then (&delay);
+                ->transition (NETWORK_ECHO_OFF)->when (anded (like ("%,CONNECT"), &ok))->then (&delay)
+                ->transition (NETWORK_ECHO_OFF)->when (anded (eq ("ALREADY CONNECTED"), eq ("ERROR")))->then (&delay);
 
         // Wyłącz ECHO podczas wysyłania danych.
         m->state (NETWORK_ECHO_OFF)->entry (and_action (at ("ATE0\r\n"), &delay))
@@ -141,7 +145,7 @@ Esp8266::Esp8266 (Usart &u, StringQueue &g) : WifiCard (u), outputBuffer (2048),
         m->state (NETWORK_PREPARE_SEND)->entry (and_action (&prepareAction, &delay))
                 ->transition (NETWORK_BEGIN_SEND)->when (&bytesToSendZero)
                 ->transition (NETWORK_SEND)->when (&ok)
-                ->transition (CLOSE_AND_RECONNECT)->when (&alwaysTrue)->then (&longDelay);
+                ->transition (CONNECT_TO_SERVER)->when (&alwaysTrue)->then (&longDelay);
 
         // Ile razy wykonaliśmy cykl NETWORK_ACK_CHECK -> NETWORK_ACK_CHECK_PARSE (oczekiwanie na ACK danych).
 //        static uint8_t ackQueryRetryNo = 0;
@@ -151,7 +155,7 @@ Esp8266::Esp8266 (Usart &u, StringQueue &g) : WifiCard (u), outputBuffer (2048),
         m->state (NETWORK_SEND)->entry (&sendAction)
                 ->transition (NETWORK_DECLARE_READ)->when (/*anded (*/eq ("SEND OK")/*, eq ("CLOSED"))*/)
                 ->transition (CANCEL_SEND)->when (msPassed (TCP_SEND_DATA_DELAY_MS, &gsmTimeCounter))
-                ->transition (CLOSE_AND_RECONNECT)->when (ored (&error, eq ("CLOSED"), eq ("SEND FAIL"), eq ("+PDP: DEACT")))->then (&longDelay);
+                ->transition (CONNECT_TO_SERVER)->when (ored (&error, eq ("CLOSED"), eq ("SEND FAIL"), eq ("+PDP: DEACT")))->then (&longDelay);
 
         static SendNetworkAction declareAction (&outputBuffer, SendNetworkAction::STAGE_DECLARE, reinterpret_cast <uint32_t *> (&bytesToSendInSendStage));
         m->state (NETWORK_DECLARE_READ)->entry (&declareAction)
@@ -159,7 +163,7 @@ Esp8266::Esp8266 (Usart &u, StringQueue &g) : WifiCard (u), outputBuffer (2048),
 
         // Wyłącz ECHO podczas wysyłania danych.
         m->state (NETWORK_ECHO_ON)->entry (at ("ATE1\r\n"))
-                ->transition (CLOSE_AND_RECONNECT)->when (&alwaysTrue);
+                ->transition (CONNECT_TO_SERVER)->when (&alwaysTrue);
 
         /* clang-format on */
 }

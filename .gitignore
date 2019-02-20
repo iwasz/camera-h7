@@ -5,3 +5,4 @@ data.txt
 build*
 .mxproject
 doc/ffd
+src/Credentials.h

@@ -359,9 +359,21 @@ int main ()
         // uint8_t buffer[BUF_SIZE];
 
         uint8_t *imageData = new (reinterpret_cast<void *> (0x24000000)) uint8_t[BUF_SIZE];
-
         memset (imageData, 0, BUF_SIZE);
+
         myCamera (imageData, BUF_SIZE);
+
+        // uint8_t encodedCbor[1024];
+        // 0x24000000 + 128000
+        uint8_t *encodedCbor = new (reinterpret_cast<void *> (0x2401F400)) uint8_t[BUF_SIZE + 1024];
+
+        // uint8_t encodedMqtt[2048];
+        // 0x2401F400 + 128000 + 1024 -> ends at 0x2405E800 - 1
+        uint8_t *encodedMqtt = new (reinterpret_cast<void *> (0x2403EC00)) uint8_t[BUF_SIZE + 2048];
+        int encodedMqttLen = BUF_SIZE + 2048;
+
+        ssize_t len = 0;
+        ssize_t offset = 0;
 
         HAL_Delay (500);
 
@@ -380,7 +392,7 @@ int main ()
                 blink.run ();
                 esp8266.run ();
 
-                if (t.isExpired ()) {
+                if (offset == 0) {
 
                         /*---------------------------------------------------------------------------*/
 
@@ -390,9 +402,6 @@ int main ()
                         cn_cbor_map_put (cb_map, cn_cbor_string_create ("systick", &err), cn_cbor_int_create (HAL_GetTick (), &err), &err);
                         cn_cbor_map_put (cb_map, cn_cbor_string_create ("image", &err), cn_cbor_data_create (imageData, BUF_SIZE, &err), &err);
 
-                        // uint8_t encodedCbor[1024];
-                        // 0x24000000 + 128000
-                        uint8_t *encodedCbor = new (reinterpret_cast<void *> (0x2401F400)) uint8_t[BUF_SIZE + 1024];
                         ssize_t encodedCborLen = cn_cbor_encoder_write (encodedCbor, 0, BUF_SIZE + 1024, cb_map);
 
                         //        ASSERT_DATA (enc_sz);
@@ -411,12 +420,7 @@ int main ()
                         data.password.cstring = nullptr;
                         data.MQTTVersion = 4;
 
-                        // uint8_t encodedMqtt[2048];
-                        // 0x2401F400 + 128000 + 1024 -> ends at 0x2405E800 - 1
-                        uint8_t *encodedMqtt = new (reinterpret_cast<void *> (0x2403EC00)) uint8_t[BUF_SIZE + 2048];
-                        int encodedMqttLen = BUF_SIZE + 2048;
-
-                        int len = MQTTSerialize_connect (encodedMqtt, encodedMqttLen, &data);
+                        len = MQTTSerialize_connect (encodedMqtt, encodedMqttLen, &data);
 
                         MQTTString topicString = MQTTString_initializer;
                         topicString.cstring = "iwasz";
@@ -424,10 +428,6 @@ int main ()
                                                       encodedCborLen);
 
                         len += MQTTSerialize_disconnect ((encodedMqtt + len), encodedMqttLen - len);
-
-                        size_t offset = 0;
-                        while ((offset = esp8266.send (0, encodedMqtt + offset, size_t (len))) > 0) {
-                        }
 
                         //        if (rc == len) {
                         //                // printf ("Successfully published\n");
@@ -437,6 +437,15 @@ int main ()
                         //        }
 
                         t.start (5000);
+                }
+
+                ssize_t bytesSend = 0;
+                while ((bytesSend = esp8266.send (0, encodedMqtt + offset, size_t (len))) > 0) {
+                        offset += bytesSend;
+                }
+
+                if (offset >= len) {
+                        offset = 0;
                 }
         }
 }
