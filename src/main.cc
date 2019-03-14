@@ -11,12 +11,12 @@
 #include "Debug.h"
 #include "Gpio.h"
 #include "Hal.h"
-#include "MQTTPacket.h"
+//#include "MQTTPacket.h"
 #include "Ov3640.h"
 #include "Pwm.h"
 #include "Usart.h"
-#include "cn-cbor/cn-cbor.h"
-#include "communicationInterface/esp8266/Esp8266.h"
+//#include "cn-cbor/cn-cbor.h"
+//#include "communicationInterface/esp8266/Esp8266.h"
 #include <cerrno>
 #include <cmath>
 #include <cstdio>
@@ -327,7 +327,7 @@ int main ()
         SystemClock_Config ();
 
         Gpio led (GPIOB, GPIO_PIN_14);
-        Blinker<4> blink (&led, 1000, 50, 100, 50);
+        Blinker<4> blink (led, 1000, 50, 100, 50);
 
         Gpio debugGpio (GPIOD, GPIO_PIN_8 | GPIO_PIN_9, GPIO_MODE_AF_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_HIGH, GPIO_AF7_USART3);
         Usart debugUart (USART3, 115200);
@@ -344,11 +344,11 @@ int main ()
         Usart espUart (USART2, 115200);
 
         // TODO może inna struktura danych
-        StringQueue gsmQueue (32);
-        MySink modemResponseSink (gsmQueue);
-        espUart.setSink (&modemResponseSink);
-        Esp8266 esp8266 (espUart, gsmQueue);
-        espUart.startReceive ();
+        //        StringQueue gsmQueue (32);
+        //        MySink modemResponseSink (gsmQueue);
+        //        espUart.setSink (&modemResponseSink);
+        //        Esp8266 esp8266 (espUart, gsmQueue);
+        //        espUart.startReceive ();
 
         /* -1- Initialize LEDs mounted on STM32H743ZI-NUCLEO board */
         //        BSP_LED_Init (LED1);
@@ -390,6 +390,7 @@ int main ()
 
         while (true) {
                 blink.run ();
+#if 0
                 esp8266.run ();
 
                 if (offset == 0) {
@@ -447,6 +448,7 @@ int main ()
                 if (offset >= len) {
                         offset = 0;
                 }
+#endif
         }
 }
 

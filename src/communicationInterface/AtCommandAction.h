@@ -1,7 +1,7 @@
 #ifndef GSMCOMMANDACTION_H
 #define GSMCOMMANDACTION_H
 
-#include "stateMachine/Action.h"
+#include "Action.h"
 #include <cstdint>
 
 #ifdef UNIT_TEST
@@ -14,7 +14,7 @@ extern std::vector<std::string> gsmModemCommandsIssued;
 /**
  * @brief Wysyłajakieś polecenie AT do modemu.
  */
-class AtCommandAction : public Action {
+class AtCommandAction : public Action<> {
 public:
         /**
          * @brief Akcja wysyłająca komendę do modemu GSM.
@@ -23,7 +23,7 @@ public:
         AtCommandAction (const char *c) : command (c), len (0) {}
         AtCommandAction (uint8_t const *c, uint16_t len) : command (reinterpret_cast<const char *> (c)), len (len) {}
         virtual ~AtCommandAction () {}
-        virtual bool run (const char *input);
+        virtual bool run (EventType const &event);
 
 protected:
         const char *command;

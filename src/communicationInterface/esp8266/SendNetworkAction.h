@@ -9,7 +9,7 @@
 #ifndef PREPARE_SEND_NETWORK_ACTION_H
 #define PREPARE_SEND_NETWORK_ACTION_H
 
-#include "stateMachine/Action.h"
+#include "Action.h"
 
 class CircularBuffer;
 

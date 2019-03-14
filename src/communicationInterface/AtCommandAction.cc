@@ -20,13 +20,13 @@ bool GsmCommandAction::run (const char *)
 
 #else
 
-bool AtCommandAction::run (const char *)
+bool AtCommandAction::run (EventType const &event)
 {
         // Tu wysyłamy coś do modemu
         if (!len) {
                 modemUsart->transmit (command);
 #if 1
-                debug->print ("gsmCommand : ");
+                debug->print ("OUT : ");
                 debug->println (command);
 #endif
         }
@@ -34,7 +34,7 @@ bool AtCommandAction::run (const char *)
                 // Brzydki kast
                 modemUsart->transmit ((uint8_t *)(command), len);
 #if 1
-                debug->print ("gsmCommand : <bin>");
+                debug->println ("OUT : <bin>");
 #endif
         }
 
