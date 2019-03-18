@@ -85,6 +85,18 @@ extern "C" void DCMI_IRQHandler ()
         ++dcmiHandlerCnt;
 }
 
+void DMAMUX1_OVR_IRQHandler (void)
+{
+        /* USER CODE BEGIN DMAMUX1_OVR_IRQn 0 */
+
+        /* USER CODE END DMAMUX1_OVR_IRQn 0 */
+        // Handle DMA2_Stream0
+        HAL_DMAEx_MUX_IRQHandler (&hdma_dcmi);
+        /* USER CODE BEGIN DMAMUX1_OVR_IRQn 1 */
+
+        /* USER CODE END DMAMUX1_OVR_IRQn 1 */
+}
+
 void BSP_CAMERA_IRQHandler (void) { HAL_DCMI_IRQHandler (&hdcmi); }
 
 /**
@@ -152,35 +164,35 @@ void myCamera (uint8_t *buf, size_t size)
         GPIO_InitStruct.Pin = GPIO_PIN_4 | GPIO_PIN_5 | GPIO_PIN_6;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
         GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
         HAL_GPIO_Init (GPIOE, &GPIO_InitStruct);
 
         GPIO_InitStruct.Pin = GPIO_PIN_4 | GPIO_PIN_6;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
         GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
         HAL_GPIO_Init (GPIOA, &GPIO_InitStruct);
 
         GPIO_InitStruct.Pin = GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
         GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
         HAL_GPIO_Init (GPIOC, &GPIO_InitStruct);
 
         GPIO_InitStruct.Pin = GPIO_PIN_3;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
         GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
         HAL_GPIO_Init (GPIOD, &GPIO_InitStruct);
 
         GPIO_InitStruct.Pin = GPIO_PIN_9;
         GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
         GPIO_InitStruct.Pull = GPIO_NOPULL;
-        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_VERY_HIGH;
+        GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
         GPIO_InitStruct.Alternate = GPIO_AF13_DCMI;
         HAL_GPIO_Init (GPIOG, &GPIO_InitStruct);
 
@@ -195,18 +207,18 @@ void myCamera (uint8_t *buf, size_t size)
         hdma_dcmi.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
         hdma_dcmi.Init.Mode = DMA_NORMAL;
         hdma_dcmi.Init.Priority = DMA_PRIORITY_VERY_HIGH;
-        hdma_dcmi.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
+        hdma_dcmi.Init.FIFOMode = DMA_FIFOMODE_ENABLE;
         // hdma_dcmi.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_HALFFULL;
 
         __HAL_LINKDMA (&hdcmi, DMA_Handle, hdma_dcmi);
 
         /* DMA interrupt init */
         /* DMA2_Stream0_IRQn interrupt configuration */
-        HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
-        HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+        HAL_NVIC_SetPriority (DMA2_Stream0_IRQn, 0, 0);
+        HAL_NVIC_EnableIRQ (DMA2_Stream0_IRQn);
         /* DMAMUX1_OVR_IRQn interrupt configuration */
-        HAL_NVIC_SetPriority(DMAMUX1_OVR_IRQn, 0, 0);
-        HAL_NVIC_EnableIRQ(DMAMUX1_OVR_IRQn);
+        HAL_NVIC_SetPriority (DMAMUX1_OVR_IRQn, 0, 0);
+        HAL_NVIC_EnableIRQ (DMAMUX1_OVR_IRQn);
 
         /* Configure the DMA stream */
         status = HAL_DMA_Init (hdcmi.DMA_Handle);
@@ -356,7 +368,7 @@ int main ()
         // uint8_t buffer[BUF_SIZE];
 
         uint8_t *imageData = new (reinterpret_cast<void *> (0x24000000)) uint8_t[BUF_SIZE];
-        memset (imageData, 0, BUF_SIZE);
+//        memset (imageData, 0xff, BUF_SIZE);
 
         myCamera (imageData, BUF_SIZE);
 
