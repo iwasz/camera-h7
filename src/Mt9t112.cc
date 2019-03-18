@@ -6,101 +6,282 @@
  *  ~~~~~~~~~                                                               *
  ****************************************************************************/
 
-#include "Ov3640.h"
+#include "Mt9t112.h"
 #include <cstdint>
 //#include <etl/array_view.h>
 #include <iterator>
 
 // TODO delete - szhould use a driver (I2C class)
+#include "Debug.h"
 #include "stm32h7xx_hal.h"
+
 extern I2C_HandleTypeDef hi2c1;
 extern "C" void Error_Handler ();
 
 #define OV3640_CHIPID_HIGH 0x300a
 #define OV3640_CHIPID_LOW 0x300b
 
-const Ov3640::SensorReg OV3640_VGA[]
-        = { { 0x3012, 0x80 }, { 0x3012, 0x80 }, { 0x304d, 0x45 }, { 0x3087, 0x16 }, { 0x30aa, 0x45 }, { 0x30b0, 0xff }, { 0x30b1, 0xff },
-            { 0x30b2, 0x10 }, { 0x30d7, 0x10 }, { 0x309e, 0x00 }, { 0x3602, 0x26 }, { 0x3603, 0x4D }, { 0x364c, 0x04 }, { 0x360c, 0x12 },
-            { 0x361e, 0x00 }, { 0x361f, 0x11 }, { 0x3633, 0x32 }, { 0x3629, 0x3c }, { 0x300e, 0x32 }, { 0x300f, 0x21 }, { 0x3010, 0x21 },
-            { 0x3011, 0x00 }, { 0x304c, 0x81 }, { 0x3018, 0x58 }, { 0x3019, 0x59 }, { 0x301a, 0x61 }, { 0x307d, 0x00 }, { 0x3087, 0x02 },
-            { 0x3082, 0x20 }, { 0x303c, 0x08 }, { 0x303d, 0x18 }, { 0x303e, 0x06 }, { 0x303F, 0x0c }, { 0x3030, 0x62 }, { 0x3031, 0x26 },
-            { 0x3032, 0xe6 }, { 0x3033, 0x6e }, { 0x3034, 0xea }, { 0x3035, 0xae }, { 0x3036, 0xa6 }, { 0x3037, 0x6a }, { 0x3015, 0x12 },
-            { 0x3014, 0x84 }, { 0x3013, 0xf7 }, { 0x3104, 0x02 }, { 0x3105, 0xfd }, { 0x3106, 0x00 }, { 0x3107, 0xff }, { 0x3308, 0xa5 },
-            { 0x3316, 0xff }, { 0x3317, 0x00 }, { 0x3087, 0x02 }, { 0x3082, 0x20 }, { 0x3300, 0x13 }, { 0x3301, 0xd6 }, { 0x3302, 0xef },
-            { 0x30b8, 0x20 }, { 0x30b9, 0x17 }, { 0x30ba, 0x04 }, { 0x30bb, 0x08 }, { 0x3100, 0x02 }, { 0x3304, 0xfc }, { 0x3400, 0x00 },
-            { 0x3404, 0x00 }, { 0x3020, 0x01 }, { 0x3021, 0x1d }, { 0x3022, 0x00 }, { 0x3023, 0x0a }, { 0x3024, 0x08 }, { 0x3025, 0x18 },
-            { 0x3026, 0x06 }, { 0x3027, 0x0c }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x68 }, { 0x3363, 0x08 },
-            { 0x3364, 0x04 }, { 0x3403, 0x42 }, { 0x3088, 0x08 }, { 0x3089, 0x00 }, { 0x308a, 0x06 }, { 0x308b, 0x00 }, { 0x3507, 0x06 },
-            { 0x350a, 0x4f }, { 0x3600, 0xc4 }, { 0x3011, 0x01 }
-
-          };
-
-const Ov3640::SensorReg OV3640_QVGA[]
-        = { { 0x3012, 0x80 }, // Soft reset
-            { 0x304d, 0x45 }, { 0x30a7, 0x5e }, { 0x3087, 0x16 }, { 0x309c, 0x1a }, { 0x30a2, 0xe4 }, { 0x30aa, 0x42 }, { 0x30b0, 0xff },
-            { 0x30b1, 0xff }, { 0x30b2, 0x10 }, { 0x300e, 0x32 }, { 0x300f, 0x21 }, { 0x3010, 0x20 }, { 0x3011, 0x04 }, { 0x304c, 0x81 },
-            { 0x30d7, 0x10 }, { 0x30d9, 0x0d }, { 0x30db, 0x08 }, { 0x3016, 0x82 }, { 0x3018, 0x58 }, { 0x3019, 0x59 }, { 0x301a, 0x61 },
-            { 0x307d, 0x00 }, { 0x3087, 0x02 }, { 0x3082, 0x20 }, { 0x3015, 0x12 }, { 0x3014, 0x84 }, { 0x3013, 0xf7 }, { 0x303c, 0x08 },
-            { 0x303d, 0x18 }, { 0x303e, 0x06 }, { 0x303f, 0x0c }, { 0x3030, 0x62 }, { 0x3031, 0x26 }, { 0x3032, 0xe6 }, { 0x3033, 0x6e },
-            { 0x3034, 0xea }, { 0x3035, 0xae }, { 0x3036, 0xa6 }, { 0x3037, 0x6a }, { 0x3104, 0x02 }, { 0x3105, 0xfd }, { 0x3106, 0x00 },
-            { 0x3107, 0xff }, { 0x3300, 0x12 }, { 0x3301, 0xde }, { 0x3302, 0xef }, { 0x3316, 0xff }, { 0x3317, 0x00 }, { 0x3312, 0x26 },
-            { 0x3314, 0x42 }, { 0x3313, 0x2b }, { 0x3315, 0x42 }, { 0x3310, 0xd0 }, { 0x3311, 0xbd }, { 0x330c, 0x18 }, { 0x330d, 0x18 },
-            { 0x330e, 0x56 }, { 0x330f, 0x5c }, { 0x330b, 0x1c }, { 0x3306, 0x5c }, { 0x3307, 0x11 }, { 0x336a, 0x52 }, { 0x3370, 0x46 },
-            { 0x3376, 0x38 }, { 0x3300, 0x13 }, { 0x30b8, 0x20 }, { 0x30b9, 0x17 }, { 0x30ba, 0x4 },  { 0x30bb, 0x8 },  { 0x3507, 0x06 },
-            { 0x350a, 0x4f }, { 0x3100, 0x02 }, { 0x3301, 0xde }, { 0x3304, 0x00 }, { 0x3400, 0x01 }, // ISP RGB
-            { 0x3404, 0x11 },                                                                         // {r[4:0], g[5:3]}, {g[2:0], b[4:0]}
-            { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0xc },  { 0x3362, 0x12 }, { 0x3363, 0x88 }, { 0x3364, 0xe4 }, { 0x3403, 0x42 },
-            { 0x3088, 0x2 },  { 0x3089, 0x80 }, { 0x308a, 0x1 },  { 0x308b, 0xe0 }, { 0x308d, 0x4 },  { 0x3086, 0x3 },  { 0x3086, 0x0 },
-            { 0x3011, 0x0 },  { 0x304c, 0x85 }, { 0x3600, 0xd0 }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0xc },  { 0x3362, 0x1 },
-            { 0x3363, 0x48 }, { 0x3364, 0xf4 }, { 0x3403, 0x42 }, { 0x3088, 0x1 },  { 0x3089, 0x40 }, { 0x308a, 0x0 },  { 0x308b, 0xf0 },
-            { 0x307c, 0x12 }, { 0x3090, 0xc8 }, { 0x3600, 0xc4 } };
-
-const Ov3640::SensorReg OV3640_176x144_JPEG[] = {
-        { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x00 }, { 0x3363, 0xb8 }, { 0x3364, 0x94 },
-        { 0x3403, 0x42 }, { 0x3088, 0x00 }, { 0x3089, 0xb0 }, { 0x308a, 0x00 }, { 0x308b, 0x90 }, { 0x304c, 0x84 },
+const Ov7670::SensorReg OV7670_QVGA[] = {
+        { 0x3a, 0x04 }, { 0x40, 0xd0 }, { 0x12, 0x14 }, { 0x32, 0x80 }, { 0x17, 0x16 }, { 0x18, 0x04 }, { 0x19, 0x02 }, { 0x1a, 0x7b },
+        { 0x03, 0x06 }, { 0x0c, 0x00 }, { 0x3e, 0x00 }, { 0x70, 0x00 }, { 0x71, 0x00 }, { 0x72, 0x11 }, { 0x73, 0x00 }, { 0xa2, 0x02 },
+        { 0x11, 0x81 }, { 0x7a, 0x20 }, { 0x7b, 0x1c }, { 0x7c, 0x28 }, { 0x7d, 0x3c }, { 0x7e, 0x55 }, { 0x7f, 0x68 }, { 0x80, 0x76 },
+        { 0x81, 0x80 }, { 0x82, 0x88 }, { 0x83, 0x8f }, { 0x84, 0x96 }, { 0x85, 0xa3 }, { 0x86, 0xaf }, { 0x87, 0xc4 }, { 0x88, 0xd7 },
+        { 0x89, 0xe8 }, { 0x13, 0xe0 }, { 0x00, 0x00 }, { 0x10, 0x00 }, { 0x0d, 0x00 }, { 0x14, 0x28 }, { 0xa5, 0x05 }, { 0xab, 0x07 },
+        { 0x24, 0x75 }, { 0x25, 0x63 }, { 0x26, 0xA5 }, { 0x9f, 0x78 }, { 0xa0, 0x68 }, { 0xa1, 0x03 }, { 0xa6, 0xdf }, { 0xa7, 0xdf },
+        { 0xa8, 0xf0 }, { 0xa9, 0x90 }, { 0xaa, 0x94 }, { 0x13, 0xe5 }, { 0x0e, 0x61 }, { 0x0f, 0x4b }, { 0x16, 0x02 }, { 0x1e, 0x17 },
+        { 0x21, 0x02 }, { 0x22, 0x91 }, { 0x29, 0x07 }, { 0x33, 0x0b }, { 0x35, 0x0b }, { 0x37, 0x1d }, { 0x38, 0x71 }, { 0x39, 0x2a },
+        { 0x3c, 0x78 }, { 0x4d, 0x40 }, { 0x4e, 0x20 }, { 0x69, 0x00 }, { 0x6b, 0x00 }, { 0x74, 0x19 }, { 0x8d, 0x4f }, { 0x8e, 0x00 },
+        { 0x8f, 0x00 }, { 0x90, 0x00 }, { 0x91, 0x00 }, { 0x92, 0x00 }, { 0x96, 0x00 }, { 0x9a, 0x80 }, { 0xb0, 0x84 }, { 0xb1, 0x0c },
+        { 0xb2, 0x0e }, { 0xb3, 0x82 }, { 0xb8, 0x0a }, { 0x43, 0x14 }, { 0x44, 0xf0 }, { 0x45, 0x34 }, { 0x46, 0x58 }, { 0x47, 0x28 },
+        { 0x48, 0x3a }, { 0x59, 0x88 }, { 0x5a, 0x88 }, { 0x5b, 0x44 }, { 0x5c, 0x67 }, { 0x5d, 0x49 }, { 0x5e, 0x0e }, { 0x64, 0x04 },
+        { 0x65, 0x20 }, { 0x66, 0x05 }, { 0x94, 0x04 }, { 0x95, 0x08 }, { 0x6c, 0x0a }, { 0x6d, 0x55 }, { 0x6e, 0x11 }, { 0x6f, 0x9f },
+        { 0x6a, 0x40 }, { 0x01, 0x40 }, { 0x02, 0x40 }, { 0x13, 0xe7 }, { 0x15, 0x02 }, { 0x4f, 0x80 }, { 0x50, 0x80 }, { 0x51, 0x00 },
+        { 0x52, 0x22 }, { 0x53, 0x5e }, { 0x54, 0x80 }, { 0x58, 0x9e }, { 0x41, 0x08 }, { 0x3f, 0x00 }, { 0x75, 0x05 }, { 0x76, 0xe1 },
+        { 0x4c, 0x00 }, { 0x77, 0x01 }, { 0x3d, 0xc2 }, { 0x4b, 0x09 }, { 0xc9, 0x60 }, { 0x41, 0x38 }, { 0x56, 0x40 }, { 0x34, 0x11 },
+        { 0x3b, 0x02 }, { 0xa4, 0x89 }, { 0x96, 0x00 }, { 0x97, 0x30 }, { 0x98, 0x20 }, { 0x99, 0x30 }, { 0x9a, 0x84 }, { 0x9b, 0x29 },
+        { 0x9c, 0x03 }, { 0x9d, 0x4c }, { 0x9e, 0x3f }, { 0x78, 0x04 }, { 0x79, 0x01 }, { 0xc8, 0xf0 }, { 0x79, 0x0f }, { 0xc8, 0x00 },
+        { 0x79, 0x10 }, { 0xc8, 0x7e }, { 0x79, 0x0a }, { 0xc8, 0x80 }, { 0x79, 0x0b }, { 0xc8, 0x01 }, { 0x79, 0x0c }, { 0xc8, 0x0f },
+        { 0x79, 0x0d }, { 0xc8, 0x20 }, { 0x79, 0x09 }, { 0xc8, 0x80 }, { 0x79, 0x02 }, { 0xc8, 0xc0 }, { 0x79, 0x03 }, { 0xc8, 0x40 },
+        { 0x79, 0x05 }, { 0xc8, 0x30 }, { 0x79, 0x26 }, { 0x09, 0x03 }, { 0x3b, 0x42 },
 };
 
-const Ov3640::SensorReg OV3640_320x240_JPEG[] = {
-        { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x01 }, { 0x3363, 0x48 }, { 0x3364, 0xf4 },
-        { 0x3403, 0x42 }, { 0x3088, 0x01 }, { 0x3089, 0x40 }, { 0x308a, 0x00 }, { 0x308b, 0xf0 },
+static const struct Ov7670::SensorReg vga_ov7670[] = {
+        { REG_HREF, 0xF6 }, // was B6
+        { 0x17, 0x13 },     // HSTART
+        { 0x18, 0x01 },     // HSTOP
+        { 0x19, 0x02 },     // VSTART
+        { 0x1a, 0x7a },     // VSTOP
+        { REG_VREF, 0x0a }, // VREF
+        { 0xff, 0xff },     /* END MARKER */
+};
+static const struct Ov7670::SensorReg qvga_ov7670[] = {
+        { REG_COM14, 0x19 }, { 0x72, 0x11 },       { 0x73, 0xf1 },      { REG_HSTART, 0x16 }, { REG_HSTOP, 0x04 },
+        { REG_HREF, 0x24 },  { REG_VSTART, 0x02 }, { REG_VSTOP, 0x7a }, { REG_VREF, 0x0a },   { 0xff, 0xff }, /* END MARKER */
+};
+static const struct Ov7670::SensorReg qqvga_ov7670[] = {
+        { REG_COM14, 0x1a }, // divide by 4
+        { 0x72, 0x22 },      // downsample by 4
+        { 0x73, 0xf2 },      // divide by 4
+        { REG_HSTART, 0x16 }, { REG_HSTOP, 0x04 }, { REG_HREF, 0xa4 }, { REG_VSTART, 0x02 },
+        { REG_VSTOP, 0x7a },  { REG_VREF, 0x0a },  { 0xff, 0xff }, /* END MARKER */
+};
+static const struct Ov7670::SensorReg yuv422_ov7670[] = {
+        { REG_COM7, 0x0 }, /* Selects YUV mode */
+        { REG_RGB444, 0 }, /* No RGB444 please */
+        { REG_COM1, 0 },
+        { REG_COM15, COM15_R00FF },
+        { REG_COM9, 0x6A }, /* 128x gain ceiling; 0x8 is reserved bit */
+        { 0x4f, 0x80 },     /* "matrix coefficient 1" */
+        { 0x50, 0x80 },     /* "matrix coefficient 2" */
+        { 0x51, 0 },        /* vb */
+        { 0x52, 0x22 },     /* "matrix coefficient 4" */
+        { 0x53, 0x5e },     /* "matrix coefficient 5" */
+        { 0x54, 0x80 },     /* "matrix coefficient 6" */
+        { REG_COM13, /*COM13_GAMMA|*/ COM13_UVSAT },
+        { 0xff, 0xff }, /* END MARKER */
+};
+static const struct Ov7670::SensorReg rgb565_ov7670[] = {
+        { REG_COM7, COM7_RGB }, /* Selects RGB mode */
+        { REG_RGB444, 0 },      /* No RGB444 please */
+        { REG_COM1, 0x0 },
+        { REG_COM15, COM15_RGB565 | COM15_R00FF },
+        { REG_COM9, 0x6A }, /* 128x gain ceiling; 0x8 is reserved bit */
+        { 0x4f, 0xb3 },     /* "matrix coefficient 1" */
+        { 0x50, 0xb3 },     /* "matrix coefficient 2" */
+        { 0x51, 0 },        /* vb */
+        { 0x52, 0x3d },     /* "matrix coefficient 4" */
+        { 0x53, 0xa7 },     /* "matrix coefficient 5" */
+        { 0x54, 0xe4 },     /* "matrix coefficient 6" */
+        { REG_COM13, /*COM13_GAMMA|*/ COM13_UVSAT },
+        { 0xff, 0xff }, /* END MARKER */
+};
+static const struct Ov7670::SensorReg bayerRGB_ov7670[] = {
+        { REG_COM7, COM7_BAYER }, { REG_COM13, 0x08 }, /* No gamma, magic rsvd bit */
+        { REG_COM16, 0x3d },                           /* Edge enhancement, denoise */
+        { REG_REG76, 0xe1 },                           /* Pix correction, magic rsvd */
+        { 0xff, 0xff },                                /* END MARKER */
+};
+static const struct Ov7670::SensorReg ov7670_default_regs[] = {
+        // from the linux driver
+        //        { REG_COM7, COM7_RESET },
+        { REG_TSLB, 0x04 }, /* OV */
+        { REG_COM7, 0 },    /* VGA */
+        /*
+         * Set the hardware window.  These values from OV don't entirely
+         * make sense - hstop is less than hstart.  But they work...
+         */
+        { REG_HSTART, 0x13 },
+        { REG_HSTOP, 0x01 },
+        { REG_HREF, 0xb6 },
+        { REG_VSTART, 0x02 },
+        { REG_VSTOP, 0x7a },
+        { REG_VREF, 0x0a },
+
+        { REG_COM3, 0 },
+        { REG_COM14, 0 },
+        /* Mystery scaling numbers */
+        { 0x70, 0x3a },
+        { 0x71, 0x35 },
+        { 0x72, 0x11 },
+        { 0x73, 0xf0 },
+        { 0xa2, /* 0x02 changed to 1*/ 1 },
+        { REG_COM10, COM10_VS_NEG },
+        /* Gamma curve values */
+        { 0x7a, 0x20 },
+        { 0x7b, 0x10 },
+        { 0x7c, 0x1e },
+        { 0x7d, 0x35 },
+        { 0x7e, 0x5a },
+        { 0x7f, 0x69 },
+        { 0x80, 0x76 },
+        { 0x81, 0x80 },
+        { 0x82, 0x88 },
+        { 0x83, 0x8f },
+        { 0x84, 0x96 },
+        { 0x85, 0xa3 },
+        { 0x86, 0xaf },
+        { 0x87, 0xc4 },
+        { 0x88, 0xd7 },
+        { 0x89, 0xe8 },
+        /* AGC and AEC parameters.  Note we start by disabling those features,
+           then turn them only after tweaking the values. */
+        { REG_COM8, COM8_FASTAEC | COM8_AECSTEP },
+        { REG_GAIN, 0 },
+        { REG_AECH, 0 },
+        { REG_COM4, 0x40 }, /* magic reserved bit */
+        { REG_COM9, 0x18 }, /* 4x gain + magic rsvd bit */
+        { REG_BD50MAX, 0x05 },
+        { REG_BD60MAX, 0x07 },
+        { REG_AEW, 0x95 },
+        { REG_AEB, 0x33 },
+        { REG_VPT, 0xe3 },
+        { REG_HAECC1, 0x78 },
+        { REG_HAECC2, 0x68 },
+        { 0xa1, 0x03 }, /* magic */
+        { REG_HAECC3, 0xd8 },
+        { REG_HAECC4, 0xd8 },
+        { REG_HAECC5, 0xf0 },
+        { REG_HAECC6, 0x90 },
+        { REG_HAECC7, 0x94 },
+        { REG_COM8, COM8_FASTAEC | COM8_AECSTEP | COM8_AGC | COM8_AEC },
+        { 0x30, 0 },
+        { 0x31, 0 }, // disable some delays
+        /* Almost all of these are magic "reserved" values.  */
+        { REG_COM5, 0x61 },
+        { REG_COM6, 0x4b },
+        { 0x16, 0x02 },
+        { REG_MVFP, 0x07 },
+        { 0x21, 0x02 },
+        { 0x22, 0x91 },
+        { 0x29, 0x07 },
+        { 0x33, 0x0b },
+        { 0x35, 0x0b },
+        { 0x37, 0x1d },
+        { 0x38, 0x71 },
+        { 0x39, 0x2a },
+        { REG_COM12, 0x78 },
+        { 0x4d, 0x40 },
+        { 0x4e, 0x20 },
+        { REG_GFIX, 0 },
+        /*{0x6b, 0x4a},*/ { 0x74, 0x10 },
+        { 0x8d, 0x4f },
+        { 0x8e, 0 },
+        { 0x8f, 0 },
+        { 0x90, 0 },
+        { 0x91, 0 },
+        { 0x96, 0 },
+        { 0x9a, 0 },
+        { 0xb0, 0x84 },
+        { 0xb1, 0x0c },
+        { 0xb2, 0x0e },
+        { 0xb3, 0x82 },
+        { 0xb8, 0x0a },
+
+        /* More reserved magic, some of which tweaks white balance */
+        { 0x43, 0x0a },
+        { 0x44, 0xf0 },
+        { 0x45, 0x34 },
+        { 0x46, 0x58 },
+        { 0x47, 0x28 },
+        { 0x48, 0x3a },
+        { 0x59, 0x88 },
+        { 0x5a, 0x88 },
+        { 0x5b, 0x44 },
+        { 0x5c, 0x67 },
+        { 0x5d, 0x49 },
+        { 0x5e, 0x0e },
+        { 0x6c, 0x0a },
+        { 0x6d, 0x55 },
+        { 0x6e, 0x11 },
+        { 0x6f, 0x9e }, /* it was 0x9F "9e for advance AWB" */
+        { 0x6a, 0x40 },
+        { REG_BLUE, 0x40 },
+        { REG_RED, 0x60 },
+        { REG_COM8, COM8_FASTAEC | COM8_AECSTEP | COM8_AGC | COM8_AEC | COM8_AWB },
+
+        /* Matrix coefficients */
+        { 0x4f, 0x80 },
+        { 0x50, 0x80 },
+        { 0x51, 0 },
+        { 0x52, 0x22 },
+        { 0x53, 0x5e },
+        { 0x54, 0x80 },
+        { 0x58, 0x9e },
+
+        { REG_COM16, COM16_AWBGAIN },
+        { REG_EDGE, 0 },
+        { 0x75, 0x05 },
+        { REG_REG76, 0xe1 },
+        { 0x4c, 0 },
+        { 0x77, 0x01 },
+        { REG_COM13, /*0xc3*/ 0x48 },
+        { 0x4b, 0x09 },
+        { 0xc9, 0x60 }, /*{REG_COM16, 0x38},*/
+        { 0x56, 0x40 },
+
+        { 0x34, 0x11 },
+        { REG_COM11, COM11_EXP | COM11_HZAUTO },
+        { 0xa4, 0x82 /*Was 0x88*/ },
+        { 0x96, 0 },
+        { 0x97, 0x30 },
+        { 0x98, 0x20 },
+        { 0x99, 0x30 },
+        { 0x9a, 0x84 },
+        { 0x9b, 0x29 },
+        { 0x9c, 0x03 },
+        { 0x9d, 0x4c },
+        { 0x9e, 0x3f },
+        { 0x78, 0x04 },
+
+        /* Extra-weird stuff.  Some sort of multiplexor register */
+        { 0x79, 0x01 },
+        { 0xc8, 0xf0 },
+        { 0x79, 0x0f },
+        { 0xc8, 0x00 },
+        { 0x79, 0x10 },
+        { 0xc8, 0x7e },
+        { 0x79, 0x0a },
+        { 0xc8, 0x80 },
+        { 0x79, 0x0b },
+        { 0xc8, 0x01 },
+        { 0x79, 0x0c },
+        { 0xc8, 0x0f },
+        { 0x79, 0x0d },
+        { 0xc8, 0x20 },
+        { 0x79, 0x09 },
+        { 0xc8, 0x80 },
+        { 0x79, 0x02 },
+        { 0xc8, 0xc0 },
+        { 0x79, 0x03 },
+        { 0xc8, 0x40 },
+        { 0x79, 0x05 },
+        { 0xc8, 0x30 },
+        { 0x79, 0x26 },
+
+        { 0xff, 0xff }, /* END MARKER */
 };
 
-const Ov3640::SensorReg OV3640_352x288_JPEG[] = {
-        { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x11 }, { 0x3363, 0x68 },
-        { 0x3364, 0x24 }, { 0x3403, 0x42 }, { 0x3088, 0x01 }, { 0x3089, 0x60 }, { 0x308a, 0x01 }, { 0x308b, 0x20 },
-};
-
-const Ov3640::SensorReg OV3640_640x480_JPEG[] = {
-        { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x12 }, { 0x3363, 0x88 }, { 0x3364, 0xe4 },
-        { 0x3403, 0x42 }, { 0x3088, 0x02 }, { 0x3089, 0x80 }, { 0x308a, 0x01 }, { 0x308b, 0xe0 }, { 0x304c, 0x84 },
-};
-const Ov3640::SensorReg OV3640_800x600_JPEG[] = {
-        { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x23 }, { 0x3363, 0x28 }, { 0x3364, 0x5c },
-        { 0x3403, 0x42 }, { 0x3088, 0x03 }, { 0x3089, 0x20 }, { 0x308a, 0x02 }, { 0x308b, 0x58 }, { 0x304c, 0x82 },
-};
-
-const Ov3640::SensorReg OV3640_1024x768_JPEG[] = {
-        { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x34 }, { 0x3363, 0x08 }, { 0x3364, 0x06 },
-        { 0x3403, 0x42 }, { 0x3088, 0x04 }, { 0x3089, 0x00 }, { 0x308a, 0x03 }, { 0x308b, 0x00 }, { 0x304c, 0x82 },
-};
-
-const Ov3640::SensorReg OV3640_1600x1200_JPEG[] = {
-        { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0C }, { 0x3362, 0x46 }, { 0x3363, 0x48 }, { 0x3364, 0xb4 },
-        { 0x3403, 0x42 }, { 0x3088, 0x06 }, { 0x3089, 0x40 }, { 0x308a, 0x04 }, { 0x308b, 0xb0 }, { 0x304c, 0x85 },
-
-};
-const Ov3640::SensorReg OV3640_1280x960_JPEG[] = {
-        { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x35 }, { 0x3363, 0x08 }, { 0x3364, 0xc4 },
-        { 0x3403, 0x42 }, { 0x3088, 0x05 }, { 0x3089, 0x00 }, { 0x308a, 0x03 }, { 0x308b, 0xc0 }, { 0x304c, 0x81 },
-};
-
-const Ov3640::SensorReg OV3640_2048x1536_JPEG[] = {
-        { 0x3302, 0xef }, { 0x335f, 0x68 }, { 0x3360, 0x18 }, { 0x3361, 0x0c }, { 0x3362, 0x68 }, { 0x3363, 0x08 },
-        { 0x3364, 0x04 }, { 0x3403, 0x42 }, { 0x3088, 0x08 }, { 0x3089, 0x00 }, { 0x308a, 0x06 }, { 0x308b, 0x00 },
-};
-
-Ov3640::Ov3640 (SensorResolution resolution)
+Ov7670::Ov7670 (SensorResolution resolution)
 {
         //        for (int i = 0; i < 256; ++i) {
         //                HAL_StatusTypeDef status = HAL_OK;
@@ -111,64 +292,98 @@ Ov3640::Ov3640 (SensorResolution resolution)
 
         HAL_Delay (500);
 
-        if (getProductId () != 0x364c) {
-                while (true) {
-                }
+        uint16_t productId;
+        if ((productId = getProductId ()) != 0x7673) {
+                debug->println (productId);
+
+                Error_Handler ();
         }
 
-        if (resolution == SensorResolution::QVGA) {
-                wrSensorRegs16_8 (OV3640_QVGA, std::size (OV3640_QVGA));
+        wrSensorReg8_8 (REG_COM7, COM7_RESET);
+        HAL_Delay (100);
+        wrSensorRegs8_8 (OV7670_QVGA, std::size (OV7670_QVGA));
+#if 0
+        // Reset
+        wrSensorReg8_8 (REG_COM7, COM7_RESET);
+        HAL_Delay (100);
+        wrSensorRegs8_8 (ov7670_default_regs, std::size (ov7670_default_regs));
+
+        // case VGA:
+        //        wrReg (REG_COM3, 0); // REG_COM3
+        //        wrSensorRegs8_8 (vga_ov7670);
+
+        // case QVGA:
+        wrSensorReg8_8 (REG_COM3, 4); // REG_COM3 enable scaling
+        wrSensorRegs8_8 (qvga_ov7670, std::size (qvga_ov7670));
+
+        // case QQVGA:
+        //        wrReg (REG_COM3, 4); // REG_COM3 enable scaling
+        //        wrSensorRegs8_8 (qqvga_ov7670);
+
+        /*---------------------------------------------------------------------------*/
+
+        // case YUV422:
+        // wrSensorRegs8_8 (yuv422_ov7670, std::size (yuv422_ov7670));
+
+        // case RGB565:
+        {
+                wrSensorRegs8_8 (rgb565_ov7670, std::size (rgb565_ov7670));
+
+                // according to the Linux kernel driver rgb565 PCLK needs rewriting
+                uint8_t temp = rdSensorReg8_8 (0x11);
+                HAL_Delay (1);
+                wrSensorReg8_8 (0x11, temp);
+                wrSensorReg8_8 (0x11, 25);
         }
-        else if (resolution == SensorResolution::VGA) {
-                wrSensorRegs16_8 (OV3640_VGA, std::size (OV3640_VGA));
-        }
 
-//        setJpegSize (OV3640_320x240);
 
-        // RAW nie JPEG - sprawdzić
-        //         wrSensorReg16_8 (0x3818, 0x81);
-        //         wrSensorReg16_8 (0x3621, 0xA7);
+        // Color pattern
+//        wrSensorReg8_8 (0x70, 0b11111111);
+//        wrSensorReg8_8 (0x71, 0b01111111);
 
-        HAL_Delay (500);
+        // case BAYER_RGB:
+        //        wrSensorRegs8_8 (bayerRGB_ov7670, std::size (bayerRGB_ov7670));
+//        HAL_Delay (100);
+#endif
 }
 
-void Ov3640::setJpegSize (JpegResolution size)
+void Ov7670::setJpegSize (JpegResolution size)
 {
-        switch (size) {
-        case OV3640_176x144:
-                wrSensorRegs16_8 (OV3640_176x144_JPEG, std::size (OV3640_176x144_JPEG));
-                break;
-        case OV3640_320x240:
-                wrSensorRegs16_8 (OV3640_320x240_JPEG, std::size (OV3640_320x240_JPEG));
-                break;
-        case OV3640_352x288:
-                wrSensorRegs16_8 (OV3640_352x288_JPEG, std::size (OV3640_352x288_JPEG));
-                break;
-        case OV3640_640x480:
-                wrSensorRegs16_8 (OV3640_640x480_JPEG, std::size (OV3640_640x480_JPEG));
-                break;
-        case OV3640_800x600:
-                wrSensorRegs16_8 (OV3640_800x600_JPEG, std::size (OV3640_800x600_JPEG));
-                break;
-        case OV3640_1024x768:
-                wrSensorRegs16_8 (OV3640_1024x768_JPEG, std::size (OV3640_1024x768_JPEG));
-                break;
-        case OV3640_1280x960:
-                wrSensorRegs16_8 (OV3640_1280x960_JPEG, std::size (OV3640_1280x960_JPEG));
-                break;
-        case OV3640_1600x1200:
-                wrSensorRegs16_8 (OV3640_1600x1200_JPEG, std::size (OV3640_1600x1200_JPEG));
-                break;
-        case OV3640_2048x1536:
-                wrSensorRegs16_8 (OV3640_2048x1536_JPEG, std::size (OV3640_2048x1536_JPEG));
-                break;
-        default:
-                wrSensorRegs16_8 (OV3640_320x240_JPEG, std::size (OV3640_320x240_JPEG));
-                break;
-        }
+        //        switch (size) {
+        //        case OV3640_176x144:
+        //                wrSensorRegs16_8 (OV3640_176x144_JPEG, std::size (OV3640_176x144_JPEG));
+        //                break;
+        //        case OV3640_320x240:
+        //                wrSensorRegs16_8 (OV3640_320x240_JPEG, std::size (OV3640_320x240_JPEG));
+        //                break;
+        //        case OV3640_352x288:
+        //                wrSensorRegs16_8 (OV3640_352x288_JPEG, std::size (OV3640_352x288_JPEG));
+        //                break;
+        //        case OV3640_640x480:
+        //                wrSensorRegs16_8 (OV3640_640x480_JPEG, std::size (OV3640_640x480_JPEG));
+        //                break;
+        //        case OV3640_800x600:
+        //                wrSensorRegs16_8 (OV3640_800x600_JPEG, std::size (OV3640_800x600_JPEG));
+        //                break;
+        //        case OV3640_1024x768:
+        //                wrSensorRegs16_8 (OV3640_1024x768_JPEG, std::size (OV3640_1024x768_JPEG));
+        //                break;
+        //        case OV3640_1280x960:
+        //                wrSensorRegs16_8 (OV3640_1280x960_JPEG, std::size (OV3640_1280x960_JPEG));
+        //                break;
+        //        case OV3640_1600x1200:
+        //                wrSensorRegs16_8 (OV3640_1600x1200_JPEG, std::size (OV3640_1600x1200_JPEG));
+        //                break;
+        //        case OV3640_2048x1536:
+        //                wrSensorRegs16_8 (OV3640_2048x1536_JPEG, std::size (OV3640_2048x1536_JPEG));
+        //                break;
+        //        default:
+        //                wrSensorRegs16_8 (OV3640_320x240_JPEG, std::size (OV3640_320x240_JPEG));
+        //                break;
+        //        }
 }
 
-void Ov3640::setLightMode (LightMode lightMode)
+void Ov7670::setLightMode (LightMode lightMode)
 {
         switch (lightMode) {
 
@@ -205,7 +420,7 @@ void Ov3640::setLightMode (LightMode lightMode)
         }
 }
 
-void Ov3640::setColorSaturation (ColorSaturation colorSaturation)
+void Ov7670::setColorSaturation (ColorSaturation colorSaturation)
 {
         switch (colorSaturation) {
         case Saturation2:
@@ -243,7 +458,7 @@ void Ov3640::setColorSaturation (ColorSaturation colorSaturation)
         }
 }
 
-void Ov3640::setBrightness (Brightness brightness)
+void Ov7670::setBrightness (Brightness brightness)
 {
         switch (brightness) {
         case Brightness3:
@@ -300,7 +515,7 @@ void Ov3640::setBrightness (Brightness brightness)
         }
 }
 
-void Ov3640::setContrast (Contrast contrast)
+void Ov7670::setContrast (Contrast contrast)
 {
         switch (contrast) {
         case Contrast3:
@@ -366,7 +581,7 @@ void Ov3640::setContrast (Contrast contrast)
         }
 }
 
-void Ov3640::setSpecialEffects (SpecialEffect specialEffect)
+void Ov7670::setSpecialEffects (SpecialEffect specialEffect)
 {
         switch (specialEffect) {
         case Antique:
@@ -430,7 +645,7 @@ void Ov3640::setSpecialEffects (SpecialEffect specialEffect)
         }
 }
 
-void Ov3640::setExposureLevel (ExposureLevel level)
+void Ov7670::setExposureLevel (ExposureLevel level)
 {
         switch (level) {
         case Exposure_17_EV:
@@ -493,7 +708,7 @@ void Ov3640::setExposureLevel (ExposureLevel level)
         }
 }
 
-void Ov3640::setSharpness (Sharpness sharpness)
+void Ov7670::setSharpness (Sharpness sharpness)
 {
         switch (sharpness) {
         case Sharpness1:
@@ -529,7 +744,7 @@ void Ov3640::setSharpness (Sharpness sharpness)
         }
 }
 
-void Ov3640::setMirrorFlip (MirrorFlip mirrorFlip)
+void Ov7670::setMirrorFlip (MirrorFlip mirrorFlip)
 {
         switch (mirrorFlip) {
         case MIRROR:
@@ -560,7 +775,7 @@ void Ov3640::setMirrorFlip (MirrorFlip mirrorFlip)
 }
 
 // Write 8 bit values to 16 bit register address
-void Ov3640::wrSensorRegs16_8 (SensorReg const reglist[], size_t len)
+void Ov7670::wrSensorRegs16_8 (SensorReg const reglist[], size_t len)
 {
         //        int err = 0;
         //        unsigned int reg_addr;
@@ -589,7 +804,7 @@ void Ov3640::wrSensorRegs16_8 (SensorReg const reglist[], size_t len)
 }
 
 // Read/write 8 bit value to/from 16 bit register address
-void Ov3640::wrSensorReg16_8 (uint16_t regId, uint8_t value)
+void Ov7670::wrSensorReg16_8 (uint16_t regId, uint8_t value)
 {
         HAL_StatusTypeDef status = HAL_OK;
 
@@ -602,7 +817,7 @@ void Ov3640::wrSensorReg16_8 (uint16_t regId, uint8_t value)
         }
 }
 
-void Ov3640::wrSensorReg8_8 (uint8_t regId, uint8_t value)
+void Ov7670::wrSensorReg8_8 (uint8_t regId, uint8_t value)
 {
         HAL_StatusTypeDef status = HAL_OK;
 
@@ -615,7 +830,7 @@ void Ov3640::wrSensorReg8_8 (uint8_t regId, uint8_t value)
         }
 }
 
-uint8_t Ov3640::rdSensorReg16_8 (uint16_t regId)
+uint8_t Ov7670::rdSensorReg16_8 (uint16_t regId)
 {
         //#if defined(RASPBERRY_PI)
         //        Ov3640_i2c_word_read (regID, regDat);
@@ -660,11 +875,31 @@ uint8_t Ov3640::rdSensorReg16_8 (uint16_t regId)
         //        return value;
 }
 
-uint16_t Ov3640::getProductId ()
+uint8_t Ov7670::rdSensorReg8_8 (uint8_t regId)
 {
-        wrSensorReg8_8 (0xff, 0x01);
-        uint8_t pidH = rdSensorReg16_8 (0x0a30); // MSB of PID. Address of the register is swapped.
-        uint8_t pidL = rdSensorReg16_8 (0x0b30); // MSB of PID. Address of the register is swapped.
+        HAL_StatusTypeDef status = HAL_OK;
 
-        return (uint16_t (pidH) << 8) | (uint16_t (pidL) & 0xff);
+        status = HAL_I2C_Master_Transmit (&hi2c1, SENSOR_I2C_ADDRESS, &regId, 1, 1000);
+
+        if (status != HAL_OK) {
+                Error_Handler ();
+        }
+
+        uint8_t value = 0;
+        status = HAL_I2C_Master_Receive (&hi2c1, SENSOR_I2C_ADDRESS, &value, 1, 1000);
+
+        if (status != HAL_OK) {
+                Error_Handler ();
+        }
+
+        return value;
 }
+
+void Ov7670::wrSensorRegs8_8 (SensorReg const reglist[], size_t len)
+{
+        for (size_t i = 0; i < len; ++i) {
+                wrSensorReg8_8 (reglist[i].address, reglist[i].value);
+        }
+}
+
+uint16_t Ov7670::getProductId () { return uint16_t (rdSensorReg8_8 (0x0a)) << 8 | rdSensorReg8_8 (0x0b); }

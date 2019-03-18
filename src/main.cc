@@ -12,6 +12,7 @@
 #include "Gpio.h"
 #include "Hal.h"
 //#include "MQTTPacket.h"
+//#include "Mt9t112.h"
 #include "Ov3640.h"
 #include "Pwm.h"
 #include "Usart.h"
@@ -65,11 +66,11 @@ void BSP_CAMERA_IRQHandler ();
 void BSP_CAMERA_DMA_IRQHandler ();
 void CAMERA_IO_Init ();
 
-static int dma1HandlerCnt = 0;
-extern "C" void DMA1_Stream0_IRQHandler ()
+static int dma2HandlerCnt = 0;
+extern "C" void DMA2_Stream0_IRQHandler ()
 {
         BSP_CAMERA_DMA_IRQHandler ();
-        ++dma1HandlerCnt;
+        ++dma2HandlerCnt;
 }
 
 /**
@@ -95,9 +96,6 @@ void BSP_CAMERA_DMA_IRQHandler (void) { HAL_DMA_IRQHandler (hdcmi.DMA_Handle); }
 
 void myCamera (uint8_t *buf, size_t size)
 {
-        // Clock generation
-        const int PWM_PERIOD = 200;
-
         // TIM3 -> APB1 (100MHz) (Ponieważ prescaler jest 1, to CK_INT = 100MHz. Gdyby nie to, to CK_INT = 200Hz).
         Pwm pwmLeft (TIM3, 1, 10 - 1);
         pwmLeft.enableChannels (Pwm::CHANNEL2);
@@ -111,8 +109,8 @@ void myCamera (uint8_t *buf, size_t size)
         hdcmi.Instance = DCMI;
         hdcmi.Init.SynchroMode = DCMI_SYNCHRO_HARDWARE;
         hdcmi.Init.PCKPolarity = DCMI_PCKPOLARITY_RISING;
-        hdcmi.Init.VSPolarity = DCMI_VSPOLARITY_LOW;
-        hdcmi.Init.HSPolarity = DCMI_HSPOLARITY_LOW;
+        hdcmi.Init.VSPolarity = DCMI_VSPOLARITY_LOW; // data valid on vsync high
+        hdcmi.Init.HSPolarity = DCMI_HSPOLARITY_LOW; // data valid on hsync high
         hdcmi.Init.CaptureRate = DCMI_CR_ALL_FRAME;
         hdcmi.Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
         hdcmi.Init.JPEGMode = DCMI_JPEG_DISABLE;
@@ -131,7 +129,7 @@ void myCamera (uint8_t *buf, size_t size)
 
         __HAL_RCC_DCMI_CLK_ENABLE ();
 
-        __HAL_RCC_DMA1_CLK_ENABLE ();
+        __HAL_RCC_DMA2_CLK_ENABLE ();
 
         __HAL_RCC_GPIOE_CLK_ENABLE ();
         __HAL_RCC_GPIOA_CLK_ENABLE ();
@@ -188,28 +186,27 @@ void myCamera (uint8_t *buf, size_t size)
 
         /* DCMI DMA Init */
         /* DCMI Init */
-        hdma_dcmi.Instance = DMA1_Stream0;
+        hdma_dcmi.Instance = DMA2_Stream0;
         hdma_dcmi.Init.Direction = DMA_PERIPH_TO_MEMORY;
         hdma_dcmi.Init.PeriphInc = DMA_PINC_DISABLE;
         hdma_dcmi.Init.Request = DMA_REQUEST_DCMI;
         hdma_dcmi.Init.MemInc = DMA_MINC_ENABLE;
         hdma_dcmi.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;
         hdma_dcmi.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;
-        hdma_dcmi.Init.Mode = DMA_CIRCULAR;
-        hdma_dcmi.Init.Priority = DMA_PRIORITY_MEDIUM;
+        hdma_dcmi.Init.Mode = DMA_NORMAL;
+        hdma_dcmi.Init.Priority = DMA_PRIORITY_VERY_HIGH;
         hdma_dcmi.Init.FIFOMode = DMA_FIFOMODE_DISABLE;
-        //        hdma_dcmi.Init.FIFOThreshold =
+        // hdma_dcmi.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_HALFFULL;
 
         __HAL_LINKDMA (&hdcmi, DMA_Handle, hdma_dcmi);
 
-        /*** Configure the NVIC for DCMI and DMA ***/
-        /* NVIC configuration for DCMI transfer complete interrupt */
-        HAL_NVIC_SetPriority (DCMI_IRQn, 0x0F, 0);
-        HAL_NVIC_EnableIRQ (DCMI_IRQn);
-
-        /* NVIC configuration for DMA2D transfer complete interrupt */
-        HAL_NVIC_SetPriority (DMA1_Stream0_IRQn, 0x0F, 0);
-        HAL_NVIC_EnableIRQ (DMA1_Stream0_IRQn);
+        /* DMA interrupt init */
+        /* DMA2_Stream0_IRQn interrupt configuration */
+        HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
+        HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
+        /* DMAMUX1_OVR_IRQn interrupt configuration */
+        HAL_NVIC_SetPriority(DMAMUX1_OVR_IRQn, 0, 0);
+        HAL_NVIC_EnableIRQ(DMAMUX1_OVR_IRQn);
 
         /* Configure the DMA stream */
         status = HAL_DMA_Init (hdcmi.DMA_Handle);
@@ -230,7 +227,7 @@ void myCamera (uint8_t *buf, size_t size)
 
         /*---------------------------------------------------------------------------*/
 
-        static Ov3640 camera (Ov3640::QVGA);
+        static Ov3640 camera;
 
         // Continuous frames.
         // HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)buff, GetSize (current_resolution));
@@ -326,7 +323,7 @@ int main ()
         /* Configure the system clock to 400 MHz */
         SystemClock_Config ();
 
-        Gpio led (GPIOB, GPIO_PIN_14);
+        Gpio led (GPIOB, GPIO_PIN_7);
         Blinker<4> blink (led, 1000, 50, 100, 50);
 
         Gpio debugGpio (GPIOD, GPIO_PIN_8 | GPIO_PIN_9, GPIO_MODE_AF_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_HIGH, GPIO_AF7_USART3);
@@ -453,7 +450,7 @@ int main ()
 }
 
 /*****************************************************************************/
-
+#if 0
 void SystemClock_Config (void)
 {
         RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
@@ -523,6 +520,64 @@ void SystemClock_Config (void)
 
         /* Enables the I/O Compensation Cell */
         HAL_EnableCompensationCell ();
+}
+#endif
+void SystemClock_Config (void)
+{
+        RCC_OscInitTypeDef RCC_OscInitStruct = { 0 };
+        RCC_ClkInitTypeDef RCC_ClkInitStruct = { 0 };
+        RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = { 0 };
+
+        /**Supply configuration update enable
+         */
+        MODIFY_REG (PWR->CR3, PWR_CR3_SCUEN, 0);
+        /**Configure the main internal regulator output voltage
+         */
+        __HAL_PWR_VOLTAGESCALING_CONFIG (PWR_REGULATOR_VOLTAGE_SCALE1);
+
+        while ((PWR->D3CR & (PWR_D3CR_VOSRDY)) != PWR_D3CR_VOSRDY) {
+        }
+        /**Initializes the CPU, AHB and APB busses clocks
+         */
+        RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48 | RCC_OSCILLATORTYPE_HSI;
+        RCC_OscInitStruct.HSIState = RCC_HSI_DIV1;
+        RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+        RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
+        RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
+        RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
+        RCC_OscInitStruct.PLL.PLLM = 4;
+        RCC_OscInitStruct.PLL.PLLN = 50;
+        RCC_OscInitStruct.PLL.PLLP = 2;
+        RCC_OscInitStruct.PLL.PLLQ = 4;
+        RCC_OscInitStruct.PLL.PLLR = 2;
+        RCC_OscInitStruct.PLL.PLLRGE = RCC_PLL1VCIRANGE_3;
+        RCC_OscInitStruct.PLL.PLLVCOSEL = RCC_PLL1VCOWIDE;
+        RCC_OscInitStruct.PLL.PLLFRACN = 0;
+        if (HAL_RCC_OscConfig (&RCC_OscInitStruct) != HAL_OK) {
+                Error_Handler ();
+        }
+        /**Initializes the CPU, AHB and APB busses clocks
+         */
+        RCC_ClkInitStruct.ClockType = RCC_CLOCKTYPE_HCLK | RCC_CLOCKTYPE_SYSCLK | RCC_CLOCKTYPE_PCLK1 | RCC_CLOCKTYPE_PCLK2
+                | RCC_CLOCKTYPE_D3PCLK1 | RCC_CLOCKTYPE_D1PCLK1;
+        RCC_ClkInitStruct.SYSCLKSource = RCC_SYSCLKSOURCE_PLLCLK;
+        RCC_ClkInitStruct.SYSCLKDivider = RCC_SYSCLK_DIV1;
+        RCC_ClkInitStruct.AHBCLKDivider = RCC_HCLK_DIV2;
+        RCC_ClkInitStruct.APB3CLKDivider = RCC_APB3_DIV2;
+        RCC_ClkInitStruct.APB1CLKDivider = RCC_APB1_DIV2;
+        RCC_ClkInitStruct.APB2CLKDivider = RCC_APB2_DIV2;
+        RCC_ClkInitStruct.APB4CLKDivider = RCC_APB4_DIV2;
+
+        if (HAL_RCC_ClockConfig (&RCC_ClkInitStruct, FLASH_LATENCY_2) != HAL_OK) {
+                Error_Handler ();
+        }
+        PeriphClkInitStruct.PeriphClockSelection = RCC_PERIPHCLK_USART3 | RCC_PERIPHCLK_USART2 | RCC_PERIPHCLK_I2C1 | RCC_PERIPHCLK_USB;
+        PeriphClkInitStruct.Usart234578ClockSelection = RCC_USART234578CLKSOURCE_D2PCLK1;
+        PeriphClkInitStruct.I2c123ClockSelection = RCC_I2C123CLKSOURCE_D2PCLK1;
+        PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
+        if (HAL_RCCEx_PeriphCLKConfig (&PeriphClkInitStruct) != HAL_OK) {
+                Error_Handler ();
+        }
 }
 
 // char MySink::allData[256];

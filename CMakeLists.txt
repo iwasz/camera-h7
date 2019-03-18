@@ -25,6 +25,8 @@ ADD_EXECUTABLE(${CMAKE_PROJECT_NAME}.elf
     "src/main.cc"
     "src/Ov3640.h"
     "src/Ov3640.cc"
+#    "src/Mt9t112.cc"
+#    "src/Mt9t112.h"
 #    "src/communicationInterface/AtCommandAction.cc"
 #    "src/communicationInterface/AtCommandAction.h"
 #    "src/communicationInterface/esp8266/Esp8266.cc"
