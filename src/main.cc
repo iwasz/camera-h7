@@ -13,7 +13,7 @@
 #include "Hal.h"
 //#include "MQTTPacket.h"
 //#include "Mt9t112.h"
-#include "Ov3640.h"
+#include "Ov2640.h"
 #include "Pwm.h"
 #include "Usart.h"
 //#include "cn-cbor/cn-cbor.h"
@@ -239,7 +239,7 @@ void myCamera (uint8_t *buf, size_t size)
 
         /*---------------------------------------------------------------------------*/
 
-        static Ov3640 camera;
+        static Ov2640 camera;
 
         // Continuous frames.
         // HAL_DCMI_Start_DMA (&hdcmi, DCMI_MODE_CONTINUOUS, (uint32_t)buff, GetSize (current_resolution));
