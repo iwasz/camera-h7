@@ -31,6 +31,104 @@ extern "C" void Error_Handler ();
 extern "C" void initialise_monitor_handles ();
 
 /*****************************************************************************/
+JPEG_HandleTypeDef JPEG_Handle;
+JPEG_HandleTypeDef *hjpeg = &JPEG_Handle;
+
+void encodeJpeg (uint8_t *in, uint8_t *out, size_t inLen)
+{
+        static MDMA_HandleTypeDef hmdmaIn;
+        static MDMA_HandleTypeDef hmdmaOut;
+
+        /* Enable JPEG clock */
+        __HAL_RCC_JPGDECEN_CLK_ENABLE ();
+
+        /* Enable MDMA clock */
+        __HAL_RCC_MDMA_CLK_ENABLE ();
+
+        HAL_NVIC_SetPriority (JPEG_IRQn, 0x07, 0x0F);
+        HAL_NVIC_EnableIRQ (JPEG_IRQn);
+
+        /* Input MDMA */
+        /* Set the parameters to be configured */
+        hmdmaIn.Init.Priority = MDMA_PRIORITY_HIGH;
+        hmdmaIn.Init.Endianness = MDMA_LITTLE_ENDIANNESS_PRESERVE;
+        hmdmaIn.Init.SourceInc = MDMA_SRC_INC_BYTE;
+        hmdmaIn.Init.DestinationInc = MDMA_DEST_INC_DISABLE;
+        hmdmaIn.Init.SourceDataSize = MDMA_SRC_DATASIZE_BYTE;
+        hmdmaIn.Init.DestDataSize = MDMA_DEST_DATASIZE_WORD;
+        hmdmaIn.Init.DataAlignment = MDMA_DATAALIGN_PACKENABLE;
+        hmdmaIn.Init.SourceBurst = MDMA_SOURCE_BURST_32BEATS;
+        hmdmaIn.Init.DestBurst = MDMA_DEST_BURST_16BEATS;
+        hmdmaIn.Init.SourceBlockAddressOffset = 0;
+        hmdmaIn.Init.DestBlockAddressOffset = 0;
+
+        /*Using JPEG Input FIFO Threshold as a trigger for the MDMA*/
+        hmdmaIn.Init.Request = MDMA_REQUEST_JPEG_INFIFO_TH; /* Set the MDMA HW trigger to JPEG Input FIFO Threshold flag*/
+        hmdmaIn.Init.TransferTriggerMode = MDMA_BUFFER_TRANSFER;
+        hmdmaIn.Init.BufferTransferLength = 32; /*Set the MDMA buffer size to the JPEG FIFO threshold size i.e 32 bytes (8 words)*/
+
+        hmdmaIn.Instance = MDMA_Channel7;
+
+        /* Associate the DMA handle */
+        __HAL_LINKDMA (hjpeg, hdmain, hmdmaIn);
+
+        /* DeInitialize the DMA Stream */
+        HAL_MDMA_DeInit (&hmdmaIn);
+        /* Initialize the DMA stream */
+        HAL_MDMA_Init (&hmdmaIn);
+
+        /* Output MDMA */
+        /* Set the parameters to be configured */
+        hmdmaOut.Init.Priority = MDMA_PRIORITY_VERY_HIGH;
+        hmdmaOut.Init.Endianness = MDMA_LITTLE_ENDIANNESS_PRESERVE;
+        hmdmaOut.Init.SourceInc = MDMA_SRC_INC_DISABLE;
+        hmdmaOut.Init.DestinationInc = MDMA_DEST_INC_BYTE;
+        hmdmaOut.Init.SourceDataSize = MDMA_SRC_DATASIZE_WORD;
+        hmdmaOut.Init.DestDataSize = MDMA_DEST_DATASIZE_BYTE;
+        hmdmaOut.Init.DataAlignment = MDMA_DATAALIGN_PACKENABLE;
+        hmdmaOut.Init.SourceBurst = MDMA_SOURCE_BURST_32BEATS;
+        hmdmaOut.Init.DestBurst = MDMA_DEST_BURST_32BEATS;
+        hmdmaOut.Init.SourceBlockAddressOffset = 0;
+        hmdmaOut.Init.DestBlockAddressOffset = 0;
+
+        /*Using JPEG Output FIFO Threshold as a trigger for the MDMA*/
+        hmdmaOut.Init.Request = MDMA_REQUEST_JPEG_OUTFIFO_TH; /* Set the MDMA HW trigger to JPEG Output FIFO Threshold flag*/
+        hmdmaOut.Init.TransferTriggerMode = MDMA_BUFFER_TRANSFER;
+        hmdmaOut.Init.BufferTransferLength = 32; /*Set the MDMA buffer size to the JPEG FIFO threshold size i.e 32 bytes (8 words)*/
+
+        hmdmaOut.Instance = MDMA_Channel6;
+        /* DeInitialize the DMA Stream */
+        HAL_MDMA_DeInit (&hmdmaOut);
+        /* Initialize the DMA stream */
+        HAL_MDMA_Init (&hmdmaOut);
+
+        /* Associate the DMA handle */
+        __HAL_LINKDMA (hjpeg, hdmaout, hmdmaOut);
+
+        HAL_NVIC_SetPriority (MDMA_IRQn, 0x08, 0x0F);
+        HAL_NVIC_EnableIRQ (MDMA_IRQn);
+
+        /*---------------------------------------------------------------------------*/
+
+        JPEG_Handle.Instance = JPEG;
+        HAL_JPEG_Init (&JPEG_Handle);
+
+        JPEG_ConfTypeDef pInfo;
+        pInfo.ImageWidth = 320;
+        pInfo.ImageHeight = 200;
+
+        /* Jpeg Encoding Setting to be setted by users */
+        pInfo.ChromaSubsampling = JPEG_422_SUBSAMPLING;
+        pInfo.ColorSpace = JPEG_422_SUBSAMPLING;
+        pInfo.ImageQuality = 75;
+
+        // static constexpr uint32_t CHUNK_SIZE_IN   ((uint32_t)(MAX_INPUT_WIDTH * BYTES_PER_PIXEL * MAX_INPUT_LINES))
+        static constexpr uint32_t CHUNK_SIZE_OUT = 4096;
+
+        HAL_JPEG_Encode_DMA (hjpeg, in, inLen, out, inLen);
+}
+
+/*****************************************************************************/
 
 /**
  * TODO improve. Can priority inversion occur?
@@ -368,7 +466,7 @@ int main ()
         // uint8_t buffer[BUF_SIZE];
 
         uint8_t *imageData = new (reinterpret_cast<void *> (0x24000000)) uint8_t[BUF_SIZE];
-//        memset (imageData, 0xff, BUF_SIZE);
+        //        memset (imageData, 0xff, BUF_SIZE);
 
         myCamera (imageData, BUF_SIZE);
 
@@ -386,13 +484,17 @@ int main ()
 
         HAL_Delay (500);
 
+        encodeJpeg (imageData, encodedCbor, BUF_SIZE);
+
+        HAL_Delay (500);
+
         FILE *f = fopen ("data.dat", "w");
 
         if (!f) {
                 Error_Handler ();
         }
 
-        fwrite (imageData, BUF_SIZE, 1, f);
+        fwrite (encodedCbor, BUF_SIZE, 1, f);
 
         fclose (f);
         Timer t;

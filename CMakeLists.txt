@@ -117,6 +117,10 @@ add_library ("stm" STATIC
         "src/stm32h7xx_it.c"
         "src/stm32h7xx_hal_conf.h"
         "src/system_stm32h7xx.c"
+#        "src/encode_dma.cc"
+#        "src/encode_dma.h"
+        "src/jpeg_utils_conf.h"
+        "src/image_320_240_rgb.h"
 
         "${CUBE_ROOT}/Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_adc_ex.h"
         "${CUBE_ROOT}/Drivers/STM32H7xx_HAL_Driver/Inc/stm32h7xx_hal_adc.h"
