@@ -240,18 +240,18 @@ Ov2640::Ov2640 (SensorResolution resolution)
 
         //        if (m_fmt == JPEG)
         //        {
-        //          wrSensorRegs8_8(OV2640_JPEG_INIT);
-        //          wrSensorRegs8_8(OV2640_YUV422);
-        //          wrSensorRegs8_8(OV2640_JPEG);
-        //          wrSensorReg8_8(0xff, 0x01);
-        //          wrSensorReg8_8(0x15, 0x00);
-        //          wrSensorRegs8_8(OV2640_320x240_JPEG);
-        //          //wrSensorReg8_8(0xff, 0x00);
-        //          //wrSensorReg8_8(0x44, 0x32);
+        wrSensorRegs8_8 (OV2640_JPEG_INIT, std::size (OV2640_JPEG_INIT));
+        wrSensorRegs8_8 (OV2640_YUV422, std::size (OV2640_YUV422));
+        wrSensorRegs8_8 (OV2640_JPEG, std::size (OV2640_JPEG));
+        wrSensorReg8_8 (0xff, 0x01);
+        wrSensorReg8_8 (0x15, 0x00);
+        wrSensorRegs8_8 (OV2640_320x240_JPEG, std::size (OV2640_320x240_JPEG));
+        // wrSensorReg8_8(0xff, 0x00);
+        // wrSensorReg8_8(0x44, 0x32);
         //        }
         //        else
         //        {
-        wrSensorRegs8_8 (OV2640_QVGA, std::size (OV2640_QVGA));
+        //        wrSensorRegs8_8 (OV2640_QVGA, std::size (OV2640_QVGA));
         //        }
 
         HAL_Delay (100);

@@ -125,7 +125,7 @@ void myCamera (uint8_t *buf, size_t size)
         hdcmi.Init.HSPolarity = DCMI_HSPOLARITY_LOW; // data valid on hsync high
         hdcmi.Init.CaptureRate = DCMI_CR_ALL_FRAME;
         hdcmi.Init.ExtendedDataMode = DCMI_EXTEND_DATA_8B;
-        hdcmi.Init.JPEGMode = DCMI_JPEG_DISABLE;
+        hdcmi.Init.JPEGMode = DCMI_JPEG_ENABLE;
         hdcmi.Init.ByteSelectMode = DCMI_BSM_ALL;
         hdcmi.Init.ByteSelectStart = DCMI_OEBS_ODD;
         hdcmi.Init.LineSelectMode = DCMI_LSM_ALL;
@@ -368,7 +368,7 @@ int main ()
         // uint8_t buffer[BUF_SIZE];
 
         uint8_t *imageData = new (reinterpret_cast<void *> (0x24000000)) uint8_t[BUF_SIZE];
-//        memset (imageData, 0xff, BUF_SIZE);
+        //        memset (imageData, 0xff, BUF_SIZE);
 
         myCamera (imageData, BUF_SIZE);
 
