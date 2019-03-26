@@ -6,7 +6,6 @@
  *  ~~~~~~~~~                                                               *
  ****************************************************************************/
 
-#include "../../ium/ium-lite/src/StringQueue.h"
 #include "Blinker.h"
 #include "Debug.h"
 #include "Gpio.h"
@@ -17,7 +16,8 @@
 #include "Pwm.h"
 #include "Usart.h"
 //#include "cn-cbor/cn-cbor.h"
-//#include "communicationInterface/esp8266/Esp8266.h"
+#include "Dma.h"
+#include "esp8266/Esp8266.h"
 #include <cerrno>
 #include <cmath>
 #include <cstdio>
@@ -29,30 +29,6 @@
 static void SystemClock_Config ();
 extern "C" void Error_Handler ();
 extern "C" void initialise_monitor_handles ();
-
-/*****************************************************************************/
-
-/**
- * TODO improve. Can priority inversion occur?
- */
-class MySink : public ICharacterSink {
-public:
-        MySink (StringQueue &g) : gsmQueue (g) {}
-        virtual ~MySink () {}
-        void onData (char c);
-        void onError (uint32_t flags)
-        {
-                // silently discard all errors, because my ESP sometimes outputs gibberish after reset
-        }
-
-private:
-        uint16_t rxBufferGsmPos = 0;
-        char rxBufferGsm[128]; /// Bufor wejściowy na odpowiedzi z modemu. Mamy własny, gdyż kolejka może się w między czasie wyczyścić.
-        StringQueue &gsmQueue;
-
-        //        static char allData[256];
-        //        uint8_t allDataCnt = 0;
-};
 
 /*****************************************************************************/
 /* Camera                                                                    */
@@ -313,10 +289,10 @@ void CAMERA_Delay (uint32_t Delay) { HAL_Delay (Delay); }
 int main ()
 {
         /* Enable I-Cache */
-        SCB_EnableICache ();
+        //        SCB_EnableICache ();
 
         /* Enable D-Cache */
-        SCB_EnableDCache ();
+        //        SCB_EnableDCache ();
 
         /* STM32H7xx HAL library initialization:
              - Systick timer is configured by default as source of time base, but user.
@@ -346,35 +322,36 @@ int main ()
         ::debug = Debug::singleton ();
         ::debug->println ("camera test");
 
-        Gpio espGpio1 (GPIOA, GPIO_PIN_3, GPIO_MODE_AF_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_HIGH, GPIO_AF7_USART2);
-        Gpio espGpio2 (GPIOD, GPIO_PIN_5, GPIO_MODE_AF_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_HIGH, GPIO_AF7_USART2);
-        HAL_NVIC_SetPriority (USART2_IRQn, 0x0F, 0);
-        HAL_NVIC_EnableIRQ (USART2_IRQn);
-        Usart espUart (USART2, 115200);
+        Gpio espGpio1 (GPIOF, GPIO_PIN_6 | GPIO_PIN_7, GPIO_MODE_AF_PP, GPIO_NOPULL, GPIO_SPEED_FREQ_HIGH, GPIO_AF7_UART7);
+        HAL_NVIC_SetPriority (UART7_IRQn, 0x0F, 0);
+        HAL_NVIC_EnableIRQ (UART7_IRQn);
+        Usart espUart (UART7, 115200);
 
-        // TODO może inna struktura danych
-        //        StringQueue gsmQueue (32);
-        //        MySink modemResponseSink (gsmQueue);
-        //        espUart.setSink (&modemResponseSink);
-        //        Esp8266 esp8266 (espUart, gsmQueue);
-        //        espUart.startReceive ();
+        Esp8266 esp8266 (espUart);
+        espUart.startReceive ();
 
-        /* -1- Initialize LEDs mounted on STM32H743ZI-NUCLEO board */
-        //        BSP_LED_Init (LED1);
+        /*---------------------------------------------------------------------------*/
 
         initialise_monitor_handles ();
-        printf ("Semihosting on camera-h7 project. Hello.");
+        printf ("Semihosting on camera-h7 project. Hello.\n");
         static constexpr size_t BUF_SIZE = 128000;
         // uint8_t buffer[BUF_SIZE];
 
         uint8_t *imageData = new (reinterpret_cast<void *> (0x24000000)) uint8_t[BUF_SIZE];
         //        memset (imageData, 0xff, BUF_SIZE);
 
-        myCamera (imageData, BUF_SIZE);
+        //        myCamera (imageData, BUF_SIZE);
+        for (int i = 0; i < BUF_SIZE; ++i) {
+                imageData[i] = i;
+        }
 
         // uint8_t encodedCbor[1024];
         // 0x24000000 + 128000
         uint8_t *encodedCbor = new (reinterpret_cast<void *> (0x2401F400)) uint8_t[BUF_SIZE + 1024];
+
+        for (int i = 0; i < BUF_SIZE; ++i) {
+                encodedCbor[i] = 0;
+        }
 
         // uint8_t encodedMqtt[2048];
         // 0x2401F400 + 128000 + 1024 -> ends at 0x2405E800 - 1
@@ -384,7 +361,73 @@ int main ()
         ssize_t len = 0;
         ssize_t offset = 0;
 
-        HAL_Delay (500);
+        HAL_Delay (3000);
+
+#if 1
+        __HAL_RCC_DMA1_CLK_ENABLE ();
+        initDma1Stream0 (imageData, encodedCbor, BUF_SIZE / 4);
+
+        /*---------------------------------------------------------------------------*/
+#else
+#define DMA_STREAM DMA2_Stream1
+//#define DMA_CHANNEL DMA_CHANNEL_0
+#define DMA_STREAM_IRQ DMA1_Stream0_IRQn
+#define DMA_STREAM_IRQHANDLER DMA1_Stream0_IRQHandler
+
+        /*## -1- Enable DMA2 clock #################################################*/
+        __HAL_RCC_DMA1_CLK_ENABLE ();
+        DMA_HandleTypeDef DmaHandle;
+
+        /*##-2- Select the DMA functional Parameters ###############################*/
+        DmaHandle.Init.Direction = DMA_MEMORY_TO_MEMORY;                /* M2M transfer mode                */
+        DmaHandle.Init.PeriphInc = DMA_PINC_ENABLE;                     /* Peripheral increment mode Enable */
+        DmaHandle.Init.MemInc = DMA_MINC_ENABLE;                        /* Memory increment mode Enable     */
+        DmaHandle.Init.PeriphDataAlignment = DMA_PDATAALIGN_WORD;       /* Peripheral data alignment : Word */
+        DmaHandle.Init.MemDataAlignment = DMA_MDATAALIGN_WORD;          /* memory data alignment : Word     */
+        DmaHandle.Init.Mode = DMA_NORMAL;                               /* Normal DMA mode                  */
+        DmaHandle.Init.Priority = DMA_PRIORITY_HIGH;                    /* priority level : high            */
+        DmaHandle.Init.FIFOMode = DMA_FIFOMODE_DISABLE;                 /* FIFO mode enabled                */
+        DmaHandle.Init.FIFOThreshold = DMA_FIFO_THRESHOLD_1QUARTERFULL; /* FIFO threshold: 1/4 full   */
+        DmaHandle.Init.MemBurst = DMA_MBURST_SINGLE;                    /* Memory burst                     */
+        DmaHandle.Init.PeriphBurst = DMA_PBURST_SINGLE;                 /* Peripheral burst                 */
+
+        /*##-3- Select the DMA instance to be used for the transfer : DMA1_Stream0 #*/
+        DmaHandle.Instance = DMA1_Stream0;
+
+        /*##-4- Initialize the DMA stream ##########################################*/
+        if (HAL_DMA_Init (&DmaHandle) != HAL_OK) {
+                /* Initialization Error */
+                Error_Handler ();
+        }
+
+        /*##-5- Select Callbacks functions called after Transfer complete and Transfer error */
+        // HAL_DMA_RegisterCallback(&DmaHandle, HAL_DMA_XFER_CPLT_CB_ID, TransferComplete);
+        // HAL_DMA_RegisterCallback(&DmaHandle, HAL_DMA_XFER_ERROR_CB_ID, TransferError);
+
+        /*##-6- Configure NVIC for DMA transfer complete/error interrupts ##########*/
+        /* Set Interrupt Group Priority */
+        //        HAL_NVIC_SetPriority (DMA1_Stream0_IRQn, 0, 0);
+
+        /* Enable the DMA STREAM global Interrupt */
+        //        HAL_NVIC_EnableIRQ (DMA1_Stream0_IRQn);
+
+        /*##-7- Start the DMA transfer using the interrupt mode ####################*/
+        /* Configure the source, destination and buffer size DMA fields and Start DMA Stream transfer */
+        /* Enable All the DMA interrupts */
+        if (HAL_DMA_Start (&DmaHandle, (uint32_t)imageData, (uint32_t)encodedCbor, BUF_SIZE / 4) != HAL_OK) {
+                /* Transfer Error */
+                Error_Handler ();
+        }
+#endif
+        /*---------------------------------------------------------------------------*/
+
+        HAL_Delay (3000);
+
+        for (int i = 0; i < BUF_SIZE; ++i) {
+                if (imageData[i] != encodedCbor[i]) {
+                        Error_Handler ();
+                }
+        }
 
         FILE *f = fopen ("data.dat", "w");
 
@@ -392,15 +435,15 @@ int main ()
                 Error_Handler ();
         }
 
-        fwrite (imageData, BUF_SIZE, 1, f);
+        fwrite (encodedCbor, BUF_SIZE, 1, f);
 
         fclose (f);
         Timer t;
 
         while (true) {
                 blink.run ();
-#if 0
                 esp8266.run ();
+#if 0
 
                 if (offset == 0) {
 
@@ -589,47 +632,6 @@ void SystemClock_Config (void)
         PeriphClkInitStruct.UsbClockSelection = RCC_USBCLKSOURCE_HSI48;
         if (HAL_RCCEx_PeriphCLKConfig (&PeriphClkInitStruct) != HAL_OK) {
                 Error_Handler ();
-        }
-}
-
-// char MySink::allData[256];
-
-/*****************************************************************************/
-
-void MySink::onData (char c)
-{
-        if (!std::isprint (c) && c != '\r' && c != '\n') {
-                return;
-        }
-
-        //        allData[allDataCnt++] = c;
-
-        if (rxBufferGsmPos > 0 && (c == '\r' || c == '\n')) {
-
-                rxBufferGsm[rxBufferGsmPos] = '\0';
-
-                // Nie wrzucamy na kolejkę odpowiedzi, które zawierają tylko \r\n
-                if (rxBufferGsmPos > 1) {
-#if 0
-                        debug->print ("rx : ");
-                        debug->println (rxBufferGsm);
-#endif
-
-                        //  __disable_irq ();
-
-                        if (!gsmQueue.push_back ()) {
-                                Error_Handler ();
-                        }
-
-                        char *queueBuffer = gsmQueue.back ();
-                        strcpy (queueBuffer, rxBufferGsm);
-                        // __enable_irq ();
-                }
-
-                rxBufferGsmPos = 0;
-        }
-        else if (std::isprint (c)) {
-                rxBufferGsm[rxBufferGsmPos++] = c;
         }
 }
 

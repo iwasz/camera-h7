@@ -17,6 +17,12 @@ INCLUDE_DIRECTORIES("mqtt-x86" ${MQTT_PACKET_SRC})
 SET (LIB_STATE_MACHINE_ROOT "../libstatemachine")
 INCLUDE_DIRECTORIES ("${LIB_STATE_MACHINE_ROOT}/src")
 
+SET (LIB_MICRO_ROOT "../libmicro")
+INCLUDE_DIRECTORIES ("${LIB_MICRO_ROOT}/src")
+
+SET (LIB_COMMS_ROOT "../libcomms")
+INCLUDE_DIRECTORIES ("${LIB_COMMS_ROOT}/src")
+
 # +-----------------+
 # | My code         |
 # +-----------------+
@@ -27,36 +33,38 @@ ADD_EXECUTABLE(${CMAKE_PROJECT_NAME}.elf
 #    "src/Ov3640.cc"
     "src/Ov2640.h"
     "src/Ov2640.cc"
-#    "src/communicationInterface/AtCommandAction.cc"
-#    "src/communicationInterface/AtCommandAction.h"
-#    "src/communicationInterface/esp8266/Esp8266.cc"
-#    "src/communicationInterface/esp8266/Esp8266.h"
-#    "src/communicationInterface/esp8266/SendNetworkAction.cc"
-#    "src/communicationInterface/esp8266/SendNetworkAction.h"
+    "src/Dma.h"
 
-    "../libmicro/src/Blinker.h"
-    "../libmicro/src/ErrorHandler.h"
-    "../libmicro/src/ErrorHandler.c"
-    "../libmicro/src/Hal.h"
-    "../libmicro/src/HalStm32H7.h"
-    "../libmicro/src/TimerF.cc"
-    "../libmicro/src/Timer.h"
-    "../libmicro/src/Debug.cc"
-    "../libmicro/src/Debug.h"
-    "../libmicro/src/debug.h"
-    "../libmicro/src/Gpio.h"
-    "../libmicro/src/GpioF.h"
-    "../libmicro/src/GpioH.cc"
-    "../libmicro/src/GpioH7.cc"
-    "../libmicro/src/Usart.h"
-    "../libmicro/src/UsartF.cc"
-    "../libmicro/src/UsartF.h"
-    "../libmicro/src/UsartF4.cc"
-    "../libmicro/src/Pwm.cc"
-    "../libmicro/src/Pwm.h"
-    "../libmicro/src/collection/Queue.h"
-    "../libmicro/src/collection/CircularBuffer.h"
-    "../libmicro/src/collection/CircularBuffer.cc"
+    "${LIB_COMMS_ROOT}/src/AtCommandAction.cc"
+    "${LIB_COMMS_ROOT}/src/AtCommandAction.h"
+    "${LIB_COMMS_ROOT}/src/esp8266/Esp8266.cc"
+    "${LIB_COMMS_ROOT}/src/esp8266/Esp8266.h"
+    "${LIB_COMMS_ROOT}/src/esp8266/SendNetworkAction.cc"
+    "${LIB_COMMS_ROOT}/src/esp8266/SendNetworkAction.h"
+
+    "${LIB_MICRO_ROOT}/src/Blinker.h"
+    "${LIB_MICRO_ROOT}/src/ErrorHandler.h"
+    "${LIB_MICRO_ROOT}/src/ErrorHandler.c"
+    "${LIB_MICRO_ROOT}/src/Hal.h"
+    "${LIB_MICRO_ROOT}/src/HalStm32H7.h"
+    "${LIB_MICRO_ROOT}/src/TimerF.cc"
+    "${LIB_MICRO_ROOT}/src/Timer.h"
+    "${LIB_MICRO_ROOT}/src/Debug.cc"
+    "${LIB_MICRO_ROOT}/src/Debug.h"
+    "${LIB_MICRO_ROOT}/src/debug.h"
+    "${LIB_MICRO_ROOT}/src/Gpio.h"
+    "${LIB_MICRO_ROOT}/src/GpioF.h"
+    "${LIB_MICRO_ROOT}/src/GpioH.cc"
+    "${LIB_MICRO_ROOT}/src/GpioH7.cc"
+    "${LIB_MICRO_ROOT}/src/Usart.h"
+    "${LIB_MICRO_ROOT}/src/UsartF.cc"
+    "${LIB_MICRO_ROOT}/src/UsartF.h"
+    "${LIB_MICRO_ROOT}/src/UsartF4.cc"
+    "${LIB_MICRO_ROOT}/src/Pwm.cc"
+    "${LIB_MICRO_ROOT}/src/Pwm.h"
+    "${LIB_MICRO_ROOT}/src/collection/Queue.h"
+    "${LIB_MICRO_ROOT}/src/collection/CircularBuffer.h"
+    "${LIB_MICRO_ROOT}/src/collection/CircularBuffer.cc"
 
 #    "${LIB_STATE_MACHINE_ROOT}/src/Action.h"
 #    "${LIB_STATE_MACHINE_ROOT}/src/DelayAction.h"
